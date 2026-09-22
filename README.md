@@ -29,6 +29,21 @@ The service worker is defined in [`src/app/sw.ts`](src/app/sw.ts) and served at 
 - Offline fallback page: [`src/app/offline/page.tsx`](src/app/offline/page.tsx).
 - Icons are currently a placeholder monogram at [`public/icon.svg`](public/icon.svg) — swap in real branded icons (ideally also PNG raster sizes for broader platform support) before shipping.
 
+## Content
+
+- Blog posts: MDX files under [`content/blog/`](content/blog), rendered via [`next-mdx-remote/rsc`](https://github.com/hashicorp/next-mdx-remote). Each post needs `title`, `date`, `excerpt`, and `tags` frontmatter.
+- Projects, about/bio, services/pricing, and contact/social info live in [`src/content/`](src/content) — all currently placeholder data, ready to swap for the real thing.
+
+## Payments (Stripe)
+
+The `/services` page sells fixed-scope packages and accepts tips, both via [Stripe Checkout](https://docs.stripe.com/checkout/quickstart).
+
+1. Copy `.env.example` to `.env.local`.
+2. Add a Stripe secret key (test or live) as `STRIPE_SECRET_KEY` — get one from the [Stripe dashboard](https://dashboard.stripe.com/test/apikeys).
+3. Restart the dev server. Without a key, checkout still works end to end but lands on `/services/cancel` with a clear "payments aren't set up yet" message instead of erroring.
+
+Packages and tip amounts are defined in [`src/content/services.ts`](src/content/services.ts); pricing is sent to Stripe via `price_data` at checkout time, so there's no need to pre-create Products/Prices in the Stripe dashboard.
+
 ## Deploy
 
-Designed to deploy on [Vercel](https://vercel.com/new). No environment variables are required yet; Stripe/email provider keys will be documented here once those integrations land.
+Designed to deploy on [Vercel](https://vercel.com/new). Set `STRIPE_SECRET_KEY` in the project's environment variables to enable payments in production.
