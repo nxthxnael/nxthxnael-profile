@@ -1,8 +1,4 @@
-const socials = [
-  { href: "https://github.com/nxthxnael", label: "GitHub" },
-  { href: "https://x.com/nxthxnael", label: "X" },
-  { href: "https://linkedin.com/in/nxthxnael", label: "LinkedIn" },
-];
+import { socials } from "@/content/contact";
 
 export function Footer() {
   return (
