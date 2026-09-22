@@ -1,26 +1,103 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f7fb;
+  --foreground: #0b1020;
+
+  --muted: #eef0f7;
+  --muted-foreground: #5b6172;
+
+  --card: #ffffff;
+  --card-foreground: #0b1020;
+
+  --border: #e2e4ee;
+
+  --accent: #4338ca;
+  --accent-foreground: #ffffff;
+
+  --glow: rgba(67, 56, 202, 0.32);
+  --grid-line: rgba(11, 16, 32, 0.06);
+
+  --gradient-from: #0b1020;
+  --gradient-to: #4338ca;
+}
+
+.dark {
+  --background: #05070f;
+  --foreground: #eef1fb;
+
+  --muted: #0d1120;
+  --muted-foreground: #98a0b8;
+
+  --card: #0b0f1e;
+  --card-foreground: #eef1fb;
+
+  --border: #1b2036;
+
+  --accent: #818cf8;
+  --accent-foreground: #05070f;
+
+  --glow: rgba(99, 102, 241, 0.45);
+  --grid-line: rgba(255, 255, 255, 0.07);
+
+  --gradient-from: #ffffff;
+  --gradient-to: #93c5fd;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+/* Subtle grid-line backdrop, AuthKit-inspired. Apply on top of `bg-background`. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Soft ambient glow, meant to sit behind hero headlines/cards. */
+.bg-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    60% 50% at 50% 0%,
+    var(--glow) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Gradient headline text treatment. */
+.text-glow-gradient {
+  background-image: linear-gradient(
+    to bottom right,
+    var(--gradient-from),
+    var(--gradient-to)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
 }
