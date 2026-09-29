@@ -50,6 +50,10 @@ export function ContactForm() {
           onChange={(event) => setEmail(event.target.value)}
           className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground outline-none focus:border-accent"
         />
+        <p className="text-xs text-muted-foreground">
+          So I can reply to the right address — your own email app fills in
+          the actual sender.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
