@@ -34,16 +34,16 @@ The service worker is defined in [`src/app/sw.ts`](src/app/sw.ts) and served at 
 - Blog posts: MDX files under [`content/blog/`](content/blog), rendered via [`next-mdx-remote/rsc`](https://github.com/hashicorp/next-mdx-remote). Each post needs `title`, `date`, `excerpt`, and `tags` frontmatter.
 - Projects, about/bio, services/pricing, and contact/social info live in [`src/content/`](src/content) — all currently placeholder data, ready to swap for the real thing.
 
-## Payments (Stripe)
+## Payments (Paystack)
 
-The `/services` page sells fixed-scope packages and accepts tips, both via [Stripe Checkout](https://docs.stripe.com/checkout/quickstart).
+The `/services` page sells fixed-scope packages (priced in KES) and accepts tips, both via [Paystack](https://paystack.com/docs/payments/accept-payments/)'s hosted checkout.
 
 1. Copy `.env.example` to `.env.local`.
-2. Add a Stripe secret key (test or live) as `STRIPE_SECRET_KEY` — get one from the [Stripe dashboard](https://dashboard.stripe.com/test/apikeys).
+2. Add a Paystack secret key (test or live) as `PAYSTACK_SECRET_KEY` — get one from the [Paystack dashboard](https://dashboard.paystack.com/#/settings/developers).
 3. Restart the dev server. Without a key, checkout still works end to end but lands on `/services/cancel` with a clear "payments aren't set up yet" message instead of erroring.
 
-Packages and tip amounts are defined in [`src/content/services.ts`](src/content/services.ts); pricing is sent to Stripe via `price_data` at checkout time, so there's no need to pre-create Products/Prices in the Stripe dashboard.
+Packages, currency, and tip amounts are defined in [`src/content/services.ts`](src/content/services.ts) — pricing there is placeholder/generated and needs review before going live. `src/lib/paystack.ts` wraps Paystack's REST API directly (`/transaction/initialize` and `/transaction/verify`) — no SDK dependency needed. Customers enter their email at checkout, which Paystack requires; on completion they land on `/services/success`, which verifies the transaction status server-side before showing confirmation.
 
 ## Deploy
 
-Designed to deploy on [Vercel](https://vercel.com/new). Set `STRIPE_SECRET_KEY` in the project's environment variables to enable payments in production.
+Designed to deploy on [Vercel](https://vercel.com/new). Set `PAYSTACK_SECRET_KEY` in the project's environment variables to enable payments in production.

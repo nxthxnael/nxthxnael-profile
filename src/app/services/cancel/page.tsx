@@ -7,11 +7,11 @@ export const metadata: Metadata = {
 
 const errorMessages: Record<string, string> = {
   not_configured:
-    "Payments aren't set up yet — add a Stripe secret key to enable checkout.",
+    "Payments aren't set up yet — add a Paystack secret key to enable checkout.",
   unknown_package: "That package couldn't be found.",
   invalid_amount: "Please enter a valid amount.",
+  invalid_email: "Please enter a valid email address.",
   invalid_request: "That request wasn't valid.",
-  stripe_error: "Something went wrong starting checkout. Please try again.",
 };
 
 export default async function ServicesCancelPage({

@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe";
-import { getPackageById } from "@/content/services";
-import type Stripe from "stripe";
+import { initializeTransaction } from "@/lib/paystack";
+import { getPackageById, currency } from "@/content/services";
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 export async function POST(request: NextRequest) {
   const origin = request.nextUrl.origin;
   const formData = await request.formData();
   const kind = formData.get("kind");
+  const email = String(formData.get("email") ?? "");
+  const cancelUrl = `${origin}/services/cancel`;
+  const callbackUrl = `${origin}/services/success`;
 
-  let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
+  if (!isValidEmail(email)) {
+    return NextResponse.redirect(
+      `${origin}/services/cancel?error=invalid_email`,
+      { status: 303 },
+    );
+  }
+
+  let amountInKobo: number;
+  let metadata: Record<string, unknown>;
 
   if (kind === "package") {
     const pkg = getPackageById(String(formData.get("packageId") ?? ""));
@@ -18,39 +32,18 @@ export async function POST(request: NextRequest) {
         { status: 303 },
       );
     }
-
-    lineItems = [
-      {
-        price_data: {
-          currency: pkg.currency,
-          product_data: {
-            name: pkg.name,
-            description: pkg.description,
-          },
-          unit_amount: pkg.priceInCents,
-        },
-        quantity: 1,
-      },
-    ];
+    amountInKobo = pkg.priceInKobo;
+    metadata = { kind: "package", packageId: pkg.id, packageName: pkg.name };
   } else if (kind === "tip") {
     const amount = Number(formData.get("amount"));
-    if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1_000_000) {
       return NextResponse.redirect(
         `${origin}/services/cancel?error=invalid_amount`,
         { status: 303 },
       );
     }
-
-    lineItems = [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: { name: "Tip / support" },
-          unit_amount: Math.round(amount * 100),
-        },
-        quantity: 1,
-      },
-    ];
+    amountInKobo = Math.round(amount * 100);
+    metadata = { kind: "tip" };
   } else {
     return NextResponse.redirect(
       `${origin}/services/cancel?error=invalid_request`,
@@ -59,22 +52,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: lineItems,
-      success_url: `${origin}/services/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/services/cancel`,
+    const { authorizationUrl } = await initializeTransaction({
+      email,
+      amountInKobo,
+      currency,
+      callbackUrl,
+      cancelUrl,
+      metadata,
     });
 
-    if (!session.url) {
-      return NextResponse.redirect(
-        `${origin}/services/cancel?error=stripe_error`,
-        { status: 303 },
-      );
-    }
-
-    return NextResponse.redirect(session.url, { status: 303 });
+    return NextResponse.redirect(authorizationUrl, { status: 303 });
   } catch {
     return NextResponse.redirect(
       `${origin}/services/cancel?error=not_configured`,
