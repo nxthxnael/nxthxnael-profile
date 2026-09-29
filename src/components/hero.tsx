@@ -4,7 +4,7 @@ const roles = ["Developer", "Designer", "Entrepreneur"];
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-grid bg-glow px-6 py-28 sm:py-36">
+    <section className="relative flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center overflow-hidden bg-grid bg-glow px-6 py-16">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
         <span className="motion-safe:animate-fade-up rounded-full border border-border bg-card px-4 py-1 text-xs font-medium text-muted-foreground">
           Hi, I&apos;m nxthxnael
