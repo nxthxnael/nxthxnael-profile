@@ -19,7 +19,7 @@ export function ProjectCard({ project }: { project: Project }) {
           </span>
         ))}
       </div>
-      <span className="mt-4 inline-block text-sm text-accent opacity-0 transition-opacity group-hover:opacity-100">
+      <span className="mt-4 inline-block text-sm text-accent">
         View case study →
       </span>
     </Link>
