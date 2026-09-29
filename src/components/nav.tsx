@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ServicesNavDropdown } from "@/components/services-nav-dropdown";
 
 const links = [
   { href: "/about", label: "About" },
   { href: "/work", label: "Work" },
   { href: "/blog", label: "Blog" },
-  { href: "/services", label: "Services" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -30,6 +30,7 @@ export function Nav() {
             </Link>
           ))}
         </nav>
+        <ServicesNavDropdown />
         <div className="flex shrink-0 items-center gap-3">
           <ThemeToggle />
         </div>

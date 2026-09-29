@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
-import { TipForm } from "@/components/tip-form";
 import { servicePackages, formatPrice, type ServicePackage } from "@/content/services";
 
 export const metadata: Metadata = {
   title: "Services",
-  description: "Productized services and ways to support the work.",
+  description: "Productized services across development, design, and business.",
 };
 
 const categories: ServicePackage["category"][] = [
@@ -20,7 +19,7 @@ export default function ServicesPage() {
       <PageHeader
         eyebrow="Services"
         title="Work with me."
-        description="A few fixed-scope ways to work together, plus a way to just say thanks."
+        description="A few fixed-scope ways to work together."
       />
 
       {categories.map((category) => {
@@ -93,20 +92,6 @@ export default function ServicesPage() {
           </section>
         );
       })}
-
-      <section className="border-t border-border px-6 py-16">
-        <div className="mx-auto max-w-md">
-          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-            Support the work
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Found something useful? Send a tip — no scope required.
-          </p>
-          <div className="mt-6">
-            <TipForm />
-          </div>
-        </div>
-      </section>
     </>
   );
 }
