@@ -44,6 +44,15 @@ The `/services` page sells fixed-scope packages (priced in KES) and accepts tips
 
 Packages, currency, and tip amounts are defined in [`src/content/services.ts`](src/content/services.ts) — pricing there is placeholder/generated and needs review before going live. `src/lib/paystack.ts` wraps Paystack's REST API directly (`/transaction/initialize` and `/transaction/verify`) — no SDK dependency needed. Customers enter their email at checkout, which Paystack requires; on completion they land on `/services/success`, which verifies the transaction status server-side before showing confirmation.
 
+### Webhook + Discord notifications
+
+[`src/app/api/webhooks/paystack/route.ts`](src/app/api/webhooks/paystack/route.ts) receives `charge.success` events directly from Paystack (more reliable than the browser callback alone, since it fires even if the customer closes the tab) and posts a notification to Discord via [`src/lib/discord.ts`](src/lib/discord.ts).
+
+1. Set `DISCORD_WEBHOOK_URL` in `.env.local` (and in Vercel for production) — create one under a Discord channel's *Settings → Integrations → Webhooks*. Optional; the webhook route still verifies and acknowledges Paystack events without it, it just skips the Discord post.
+2. In the [Paystack dashboard](https://dashboard.paystack.com/#/settings/developers), set the **Live Webhook URL** (and **Test Webhook URL**, separately, for test mode) to `https://yourdomain.com/api/webhooks/paystack`.
+
+Every request is verified against the `x-paystack-signature` header (HMAC-SHA512 of the raw body using `PAYSTACK_SECRET_KEY`) before anything is processed — requests that don't match are rejected with `401`.
+
 ## Deploy
 
-Designed to deploy on [Vercel](https://vercel.com/new). Set `PAYSTACK_SECRET_KEY` in the project's environment variables to enable payments in production.
+Designed to deploy on [Vercel](https://vercel.com/new). Set `PAYSTACK_SECRET_KEY` (required) and `DISCORD_WEBHOOK_URL` (optional) in the project's environment variables to enable payments and notifications in production.
