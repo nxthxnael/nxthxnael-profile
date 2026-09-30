@@ -40,7 +40,11 @@ export function getAllPosts(): PostSummary[] {
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
+const SLUG_PATTERN = /^[a-z0-9-]+$/;
+
 export function getPostSource(slug: string): string | undefined {
+  if (!SLUG_PATTERN.test(slug)) return undefined;
+
   const filePath = path.join(BLOG_DIR, `${slug}.mdx`);
   if (!fs.existsSync(filePath)) return undefined;
   return fs.readFileSync(filePath, "utf8");
