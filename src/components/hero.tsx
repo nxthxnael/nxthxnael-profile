@@ -33,6 +33,12 @@ export function Hero() {
           >
             Get in touch
           </Link>
+          <Link
+            href="/support"
+            className="rounded-full border border-border px-6 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            Support me
+          </Link>
         </div>
       </div>
     </section>
