@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { bio, skillGroups, timeline } from "@/content/about";
+import { certifications } from "@/content/certifications";
 
 export const metadata: Metadata = {
   title: "About",
@@ -87,6 +88,49 @@ export default function AboutPage() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      <section className="border-t border-border px-6 py-16">
+        <div className="mx-auto max-w-3xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              Credentials
+            </h2>
+            <a
+              href="/resume.pdf"
+              download
+              className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            >
+              Download Resume
+            </a>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {certifications.map((cert) => (
+              <div
+                key={cert.id}
+                className="rounded-2xl border border-border bg-card p-5"
+              >
+                <h3 className="font-medium text-card-foreground">
+                  {cert.title}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {cert.issuer} · {cert.dateEarned}
+                </p>
+                {cert.verifyUrl ? (
+                  <a
+                    href={cert.verifyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-block text-sm text-accent transition-opacity hover:opacity-80"
+                  >
+                    Verify →
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </>
