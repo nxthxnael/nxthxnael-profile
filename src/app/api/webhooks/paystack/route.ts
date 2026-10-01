@@ -1,7 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { ipAddress } from "@vercel/functions";
 import { sendDiscordNotification } from "@/lib/discord";
 import { formatPrice } from "@/content/services";
+import {
+  checkWebhookRateLimit,
+  isDuplicateWebhookReference,
+} from "@/lib/rate-limit";
 
 function isValidSignature(rawBody: string, signature: string | null) {
   const secret = process.env.PAYSTACK_SECRET_KEY;
@@ -28,6 +33,12 @@ type ChargeSuccessData = {
 };
 
 export async function POST(request: NextRequest) {
+  const ip = ipAddress(request) ?? "unknown";
+  const withinLimit = await checkWebhookRateLimit(ip);
+  if (!withinLimit) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const rawBody = await request.text();
   const signature = request.headers.get("x-paystack-signature");
 
@@ -42,6 +53,12 @@ export async function POST(request: NextRequest) {
 
   if (event.event === "charge.success") {
     const { data } = event;
+
+    const isDuplicate = await isDuplicateWebhookReference(data.reference);
+    if (isDuplicate) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     const metadata = data.metadata ?? {};
     const isPackage = metadata.kind === "package";
 

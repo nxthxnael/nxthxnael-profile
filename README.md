@@ -53,6 +53,15 @@ Packages, currency, and tip amounts are defined in [`src/content/services.ts`](s
 
 Every request is verified against the `x-paystack-signature` header (HMAC-SHA512 of the raw body using `PAYSTACK_SECRET_KEY`) before anything is processed — requests that don't match are rejected with `401`.
 
+### Rate limiting & abuse protection
+
+[`src/lib/rate-limit.ts`](src/lib/rate-limit.ts) rate limits `/api/checkout` (10 requests/60s per IP) and `/api/webhooks/paystack` (30/60s per IP) using [Upstash](https://upstash.com) Redis, and deduplicates webhook retries/replays by `reference`. `/api/checkout` also rejects cross-site form submissions (an `Origin`/`Referer` that doesn't match the site's own host).
+
+1. Create a free Redis database at [console.upstash.com](https://console.upstash.com).
+2. Copy its REST URL and token (Database → REST API) into `.env.local` as `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (and into Vercel for production).
+
+Both env vars are optional — without them, rate limiting and replay-dedup fail **open** (requests are allowed, a `console.warn` is logged) rather than breaking checkout before you've set this up.
+
 ## Deploy
 
-Designed to deploy on [Vercel](https://vercel.com/new). Set `PAYSTACK_SECRET_KEY` (required) and `DISCORD_WEBHOOK_URL` (optional) in the project's environment variables to enable payments and notifications in production.
+Designed to deploy on [Vercel](https://vercel.com/new). Required: `PAYSTACK_SECRET_KEY`. Optional but recommended: `DISCORD_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.

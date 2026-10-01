@@ -1,13 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ipAddress } from "@vercel/functions";
 import { initializeTransaction } from "@/lib/paystack";
 import { getPackageById, currency } from "@/content/services";
+import { checkCheckoutRateLimit } from "@/lib/rate-limit";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/** Rejects cross-site form submissions to this endpoint. */
+function isSameOrigin(request: NextRequest): boolean {
+  const host = request.nextUrl.host;
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+
+  if (origin) {
+    try {
+      return new URL(origin).host === host;
+    } catch {
+      return false;
+    }
+  }
+
+  if (referer) {
+    try {
+      return new URL(referer).host === host;
+    } catch {
+      return false;
+    }
+  }
+
+  // Neither header present — allow (e.g. non-browser clients).
+  return true;
+}
+
 export async function POST(request: NextRequest) {
   const origin = request.nextUrl.origin;
+
+  if (!isSameOrigin(request)) {
+    return NextResponse.redirect(
+      `${origin}/services/cancel?error=invalid_request`,
+      { status: 303 },
+    );
+  }
+
+  const ip = ipAddress(request) ?? "unknown";
+  const withinLimit = await checkCheckoutRateLimit(ip);
+  if (!withinLimit) {
+    return NextResponse.redirect(
+      `${origin}/services/cancel?error=rate_limited`,
+      { status: 303 },
+    );
+  }
+
   const formData = await request.formData();
   const kind = formData.get("kind");
   const email = String(formData.get("email") ?? "");

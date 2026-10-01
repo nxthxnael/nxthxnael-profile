@@ -12,6 +12,7 @@ const errorMessages: Record<string, string> = {
   invalid_amount: "Please enter a valid amount.",
   invalid_email: "Please enter a valid email address.",
   invalid_request: "That request wasn't valid.",
+  rate_limited: "Too many attempts — please wait a minute and try again.",
 };
 
 export default async function ServicesCancelPage({
