@@ -13,6 +13,7 @@ export async function sendDiscordNotification(
 
   const response = await fetch(webhookUrl, {
     method: "POST",
+    signal: AbortSignal.timeout(3000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       embeds: [
@@ -27,7 +28,7 @@ export async function sendDiscordNotification(
   });
 
   if (!response.ok) {
-    console.error(
+    throw new Error(
       `Discord webhook returned ${response.status}: ${await response.text()}`,
     );
   }

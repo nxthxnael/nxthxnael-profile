@@ -5,6 +5,7 @@ import { sendDiscordNotification } from "@/lib/discord";
 import { formatPrice } from "@/content/services";
 import {
   checkWebhookRateLimit,
+  forgetWebhookReference,
   isDuplicateWebhookReference,
 } from "@/lib/rate-limit";
 
@@ -62,27 +63,32 @@ export async function POST(request: NextRequest) {
     const metadata = data.metadata ?? {};
     const isPackage = metadata.kind === "package";
 
-    await sendDiscordNotification({
-      title: isPackage ? "New booking" : "New tip received",
-      fields: [
-        ...(isPackage && metadata.packageName
-          ? [{ name: "Package", value: metadata.packageName, inline: true }]
-          : []),
-        {
-          name: "Amount",
-          value: formatPrice(data.amount, data.currency),
-          inline: true,
-        },
-        {
-          name: "From",
-          value: data.customer?.email ?? "unknown",
-          inline: true,
-        },
-        { name: "Reference", value: data.reference },
-      ],
-    }).catch(() => {
-      // Notification failures shouldn't fail webhook acknowledgment.
-    });
+    try {
+      await sendDiscordNotification({
+        title: isPackage ? "New booking" : "New tip received",
+        fields: [
+          ...(isPackage && metadata.packageName
+            ? [{ name: "Package", value: metadata.packageName, inline: true }]
+            : []),
+          {
+            name: "Amount",
+            value: formatPrice(data.amount, data.currency),
+            inline: true,
+          },
+          {
+            name: "From",
+            value: data.customer?.email ?? "unknown",
+            inline: true,
+          },
+          { name: "Reference", value: data.reference },
+        ],
+      });
+    } catch (error) {
+      // Un-mark the reference and answer 500 so Paystack retries the delivery.
+      console.error("Discord notification failed", error);
+      await forgetWebhookReference(data.reference);
+      return NextResponse.json({ error: "Notification failed" }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ received: true });
