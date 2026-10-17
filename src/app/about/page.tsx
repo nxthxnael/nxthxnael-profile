@@ -106,31 +106,33 @@ export default function AboutPage() {
             </a>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {certifications.map((cert) => (
-              <div
-                key={cert.id}
-                className="rounded-2xl border border-border bg-card p-5"
-              >
-                <h3 className="font-medium text-card-foreground">
-                  {cert.title}
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {cert.issuer} · {cert.dateEarned}
-                </p>
-                {cert.verifyUrl ? (
-                  <a
-                    href={cert.verifyUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-block text-sm text-accent transition-opacity hover:opacity-80"
-                  >
-                    Verify →
-                  </a>
-                ) : null}
+          {certifications.length ? (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {certifications.map((cert) => (
+                <div
+                  key={cert.id}
+                  className="rounded-2xl border border-border bg-card p-5"
+                >
+                  <h3 className="font-medium text-card-foreground">
+                    {cert.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {cert.issuer} · {cert.dateEarned}
+                  </p>
+                  {cert.verifyUrl ? (
+                    <a
+                      href={cert.verifyUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-block text-sm text-accent transition-opacity hover:opacity-80"
+                    >
+                      Verify →
+                    </a>
+          ) : null}
               </div>
             ))}
           </div>
+          ) : null}
         </div>
       </section>
     </>
