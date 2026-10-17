@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import matter from "gray-matter";
 import { compileMDX } from "next-mdx-remote/rsc";
 import { getAllPosts, getPostSource } from "@/lib/blog";
 import type { PostFrontmatter } from "@/lib/blog";
@@ -18,10 +19,8 @@ export async function generateMetadata({
   const source = getPostSource(slug);
   if (!source) return {};
 
-  const { frontmatter } = await compileMDX<PostFrontmatter>({
-    source,
-    options: { parseFrontmatter: true },
-  });
+  // Frontmatter only; the page itself compiles the MDX.
+  const frontmatter = matter(source).data as PostFrontmatter;
 
   return {
     title: frontmatter.title,
