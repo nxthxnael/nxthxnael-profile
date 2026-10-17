@@ -108,7 +108,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.redirect(authorizationUrl, { status: 303 });
   } catch (error) {
-    console.error("Checkout failed to initialize a Paystack transaction", error);
+    // No email here: keep customer PII out of the logs.
+    console.error("Checkout failed to initialize a Paystack transaction", {
+      ...metadata,
+      amountInKobo,
+      currency,
+      error,
+    });
     const code = process.env.PAYSTACK_SECRET_KEY
       ? "checkout_failed"
       : "not_configured";
