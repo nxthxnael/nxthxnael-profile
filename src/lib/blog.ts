@@ -34,6 +34,8 @@ export function getAllPosts(): PostSummary[] {
       return {
         slug,
         ...frontmatter,
+        // A post without a tags: line must not crash the index page.
+        tags: frontmatter.tags ?? [],
         readingTime: readingTime(content).text,
       };
     })
