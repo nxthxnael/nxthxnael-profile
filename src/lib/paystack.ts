@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 const PAYSTACK_API = "https://api.paystack.co";
 
 // Paystack allows only letters, digits, "-", "." and "=" in references; \w also
@@ -94,4 +96,18 @@ export async function verifyTransaction(
     amount: json.data.amount,
     currency: json.data.currency,
   };
+}
+
+/** Checks the x-paystack-signature header (HMAC-SHA512 of the raw body). */
+export function isValidSignature(rawBody: string, signature: string | null) {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret || !signature) return false;
+
+  const expected = createHmac("sha512", secret).update(rawBody).digest("hex");
+
+  const expectedBuffer = Buffer.from(expected, "hex");
+  const signatureBuffer = Buffer.from(signature, "hex");
+  if (expectedBuffer.length !== signatureBuffer.length) return false;
+
+  return timingSafeEqual(expectedBuffer, signatureBuffer);
 }
