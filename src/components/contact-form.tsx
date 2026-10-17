@@ -65,6 +65,7 @@ export function ContactForm() {
           name="message"
           required
           rows={5}
+          maxLength={1000}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           className="resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground outline-none focus:border-accent"
