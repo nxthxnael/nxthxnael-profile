@@ -29,6 +29,11 @@ export default function BlogPage() {
 
       <section className="px-6 py-16">
         <div className="mx-auto flex max-w-3xl flex-col divide-y divide-border">
+          {posts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No posts yet. The first one is coming soon.
+            </p>
+          ) : null}
           {posts.map((post) => (
             <Link
               key={post.slug}

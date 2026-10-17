@@ -18,6 +18,9 @@ export type PostSummary = PostFrontmatter & {
 };
 
 function getSlugs(): string[] {
+  // Git doesn't track empty folders, so with no posts the folder is absent.
+  if (!fs.existsSync(BLOG_DIR)) return [];
+
   return fs
     .readdirSync(BLOG_DIR)
     .filter((file) => file.endsWith(".mdx"))
