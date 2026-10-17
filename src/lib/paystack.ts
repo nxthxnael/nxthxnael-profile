@@ -49,7 +49,8 @@ export async function initializeTransaction(
     }),
   });
 
-  const json = await response.json();
+  // An HTML error page from a gateway or proxy isn't JSON; fall back to the status check.
+  const json = await response.json().catch(() => ({}));
 
   if (!response.ok || !json.status) {
     throw new Error(json.message ?? "Failed to initialize Paystack transaction");
@@ -77,7 +78,8 @@ export async function verifyTransaction(
     },
   );
 
-  const json = await response.json();
+  // An HTML error page from a gateway or proxy isn't JSON; fall back to the status check.
+  const json = await response.json().catch(() => ({}));
 
   if (!response.ok || !json.status) {
     throw new Error(json.message ?? "Failed to verify Paystack transaction");
