@@ -60,6 +60,30 @@ export default async function ProjectPage({
               </span>
             ))}
           </div>
+          {project.liveUrl || project.repoUrl ? (
+            <div className="flex flex-wrap gap-4 pt-1 text-sm">
+              {project.liveUrl ? (
+                <a
+                  href={project.liveUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent transition-opacity hover:opacity-80"
+                >
+                  Live site →
+                </a>
+              ) : null}
+              {project.repoUrl ? (
+                <a
+                  href={project.repoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent transition-opacity hover:opacity-80"
+                >
+                  Source on GitHub →
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </section>
 
