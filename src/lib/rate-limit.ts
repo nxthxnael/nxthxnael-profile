@@ -54,7 +54,14 @@ export const checkWebhookRateLimit = (ip: string) =>
 // (72 hours for live-mode webhooks), so genuine retries are deduped too.
 const WEBHOOK_SEEN_TTL_SECONDS = 60 * 60 * 24 * 7;
 
-/** Fails open (treats as "not a duplicate") if Upstash isn't configured or errors. */
+// shortcut: per-instance memory only, so a replay can still slip through on a
+// cold instance while Redis is down; upgrade if that ever shows up in Discord.
+const seenWhileRedisDown = new Set<string>();
+
+/**
+ * Fails open (treats as "not a duplicate") if Upstash isn't configured. If it
+ * errors, the first delivery goes through and repeats are caught in memory.
+ */
 export async function isDuplicateWebhookReference(
   reference: string,
 ): Promise<boolean> {
@@ -68,7 +75,10 @@ export async function isDuplicateWebhookReference(
 
     return result === null;
   } catch (error) {
-    console.error("Webhook dedupe unavailable, treating as new", error);
+    console.error("Webhook dedupe unavailable, using in-memory check", error);
+    if (seenWhileRedisDown.has(reference)) return true;
+    if (seenWhileRedisDown.size >= 1000) seenWhileRedisDown.clear();
+    seenWhileRedisDown.add(reference);
     return false;
   }
 }
