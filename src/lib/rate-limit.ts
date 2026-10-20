@@ -85,6 +85,7 @@ export async function isDuplicateWebhookReference(
 
 /** Lets Paystack's retry of a failed delivery through the dedupe check. */
 export async function forgetWebhookReference(reference: string) {
+  seenWhileRedisDown.delete(reference);
   if (!redis) return;
 
   try {
