@@ -85,7 +85,10 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       // Un-mark the reference and answer 500 so Paystack retries the delivery.
-      console.error("Discord notification failed", error);
+      console.error("Discord notification failed", {
+        reference: data.reference,
+        error,
+      });
       await forgetWebhookReference(data.reference);
       return NextResponse.json({ error: "Notification failed" }, { status: 500 });
     }
