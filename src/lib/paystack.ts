@@ -1,5 +1,9 @@
 const PAYSTACK_API = "https://api.paystack.co";
 
+// Paystack allows only letters, digits, "-", "." and "=" in references; \w also
+// lets "_" through, which is harmless. Used to skip the verify call for junk.
+export const REFERENCE_PATTERN = /^[\w.=-]{8,64}$/;
+
 function getSecretKey(): string {
   const key = process.env.PAYSTACK_SECRET_KEY;
 

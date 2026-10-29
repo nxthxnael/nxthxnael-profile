@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { verifyTransaction } from "@/lib/paystack";
+import { REFERENCE_PATTERN, verifyTransaction } from "@/lib/paystack";
 import { checkCheckoutRateLimit } from "@/lib/rate-limit";
 
 export const metadata: Metadata = {
   title: "Payment status",
 };
-
-// Paystack references are short alphanumeric strings; skip the API call for junk.
-const REFERENCE_PATTERN = /^[\w.=-]{8,64}$/;
 
 async function getTransactionStatus(reference: string | undefined) {
   if (!reference || !REFERENCE_PATTERN.test(reference)) return null;
