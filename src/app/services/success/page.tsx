@@ -47,7 +47,7 @@ export default async function ServicesSuccessPage({
       <p className="max-w-md text-sm text-muted-foreground">
         {confirmed
           ? "Your payment went through. I'll be in touch shortly to follow up."
-          : "We couldn't confirm a payment yet. If you were charged, I'll see it and get in touch; otherwise you can try again."}
+          : "We couldn't confirm a payment yet. If you were charged, please don't pay again: I'll see it and get in touch. Otherwise you can try again."}
       </p>
       <Link
         href={confirmed ? "/" : "/services"}
