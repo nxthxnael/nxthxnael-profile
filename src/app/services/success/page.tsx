@@ -5,7 +5,7 @@ import { verifyTransaction } from "@/lib/paystack";
 import { checkCheckoutRateLimit } from "@/lib/rate-limit";
 
 export const metadata: Metadata = {
-  title: "Payment successful",
+  title: "Payment status",
 };
 
 // Paystack references are short alphanumeric strings; skip the API call for junk.
