@@ -82,3 +82,15 @@ export async function isDuplicateWebhookReference(
     return false;
   }
 }
+
+/** Lets Paystack's retry of a failed delivery through the dedupe check. */
+export async function forgetWebhookReference(reference: string) {
+  seenWhileRedisDown.delete(reference);
+  if (!redis) return;
+
+  try {
+    await redis.del(`webhook-seen:${reference}`);
+  } catch (error) {
+    console.error("Failed to clear webhook reference", error);
+  }
+}
