@@ -37,14 +37,24 @@ test("rejects everything when the secret key is unset", () => {
   process.env.PAYSTACK_SECRET_KEY = "sk_test_unit";
 });
 
-test("every package has a unique id and a sane price in minor units", () => {
-  const ids = new Set(servicePackages.map((pkg) => pkg.id));
-  assert.equal(ids.size, servicePackages.length);
+// Update this table when a price changes on purpose: that is the point. It
+// would have caught the 35_000_00 typo, which is a valid whole number.
+const expectedPricesInKobo: Record<string, number> = {
+  "website-audit": 1_500_000,
+  "landing-page-build": 3_500_000,
+  "web-app-mvp": 35_000_000,
+  "brand-ui-kit": 4_500_000,
+  "product-design-sprint": 12_000_000,
+  "startup-advisory": 1_200_000,
+};
+
+test("every package has a unique id and exactly its expected price", () => {
+  const ids = servicePackages.map((pkg) => pkg.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.deepEqual([...ids].sort(), Object.keys(expectedPricesInKobo).sort());
 
   for (const pkg of servicePackages) {
-    assert.ok(Number.isInteger(pkg.priceInKobo), `${pkg.id} price is whole`);
-    assert.ok(pkg.priceInKobo > 0, `${pkg.id} price is positive`);
-    assert.equal(pkg.priceInKobo % 100, 0, `${pkg.id} price is whole KES`);
+    assert.equal(pkg.priceInKobo, expectedPricesInKobo[pkg.id], pkg.id);
     assert.equal(getPackageById(pkg.id), pkg);
   }
 
