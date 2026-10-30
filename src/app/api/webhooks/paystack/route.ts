@@ -1,26 +1,13 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { ipAddress } from "@vercel/functions";
 import { sendDiscordNotification } from "@/lib/discord";
+import { isValidSignature } from "@/lib/paystack";
 import { formatPrice } from "@/content/services";
 import {
   checkWebhookRateLimit,
   forgetWebhookReference,
   isDuplicateWebhookReference,
 } from "@/lib/rate-limit";
-
-function isValidSignature(rawBody: string, signature: string | null) {
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret || !signature) return false;
-
-  const expected = createHmac("sha512", secret).update(rawBody).digest("hex");
-
-  const expectedBuffer = Buffer.from(expected, "hex");
-  const signatureBuffer = Buffer.from(signature, "hex");
-  if (expectedBuffer.length !== signatureBuffer.length) return false;
-
-  return timingSafeEqual(expectedBuffer, signatureBuffer);
-}
 
 type ChargeSuccessData = {
   reference: string;
