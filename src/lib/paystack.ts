@@ -99,15 +99,15 @@ export async function verifyTransaction(
 }
 
 /** Checks the x-paystack-signature header (HMAC-SHA512 of the raw body). */
+// A SHA-512 digest is 64 bytes = exactly 128 hex characters. Checked first
+// because Buffer.from(x, "hex") silently stops at the first non-hex character.
+const SIGNATURE_PATTERN = /^[0-9a-f]{128}$/i;
+
 export function isValidSignature(rawBody: string, signature: string | null) {
   const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret || !signature) return false;
+  if (!secret || !signature || !SIGNATURE_PATTERN.test(signature)) return false;
 
-  const expected = createHmac("sha512", secret).update(rawBody).digest("hex");
+  const expected = createHmac("sha512", secret).update(rawBody).digest();
 
-  const expectedBuffer = Buffer.from(expected, "hex");
-  const signatureBuffer = Buffer.from(signature, "hex");
-  if (expectedBuffer.length !== signatureBuffer.length) return false;
-
-  return timingSafeEqual(expectedBuffer, signatureBuffer);
+  return timingSafeEqual(expected, Buffer.from(signature, "hex"));
 }

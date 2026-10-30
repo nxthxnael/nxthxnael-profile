@@ -22,6 +22,14 @@ test("rejects wrong, tampered, malformed and missing signatures", () => {
   assert.equal(isValidSignature(body, null), false);
 });
 
+test("rejects a valid signature with anything appended", () => {
+  // Buffer.from(x, "hex") silently stops at the first non-hex character, so
+  // without a strict format check these would decode to the valid digest.
+  for (const suffix of ["zz", "0", "g1", " "]) {
+    assert.equal(isValidSignature(body, sign(body) + suffix), false, suffix);
+  }
+});
+
 test("rejects everything when the secret key is unset", () => {
   const signature = sign(body);
   delete process.env.PAYSTACK_SECRET_KEY;
