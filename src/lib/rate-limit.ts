@@ -8,6 +8,15 @@ const redis = (() => {
   return new Redis({ url, token });
 })();
 
+/**
+ * The client IP used as the rate-limit key. Vercel sets x-real-ip on every
+ * request; on any other host this header is client-controlled, so a caller
+ * could dodge the limits. Revisit this function before moving hosts.
+ */
+export function getClientIp(headers: { get(name: string): string | null }) {
+  return headers.get("x-real-ip") ?? "unknown";
+}
+
 if (!redis) {
   console.warn(
     "UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN not set — rate " +

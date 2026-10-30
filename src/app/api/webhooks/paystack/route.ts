@@ -5,6 +5,7 @@ import { formatPrice } from "@/content/services";
 import {
   checkWebhookRateLimit,
   forgetWebhookReference,
+  getClientIp,
   isDuplicateWebhookReference,
 } from "@/lib/rate-limit";
 
@@ -20,7 +21,7 @@ type ChargeSuccessData = {
 };
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(request.headers);
   const withinLimit = await checkWebhookRateLimit(ip);
   if (!withinLimit) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
