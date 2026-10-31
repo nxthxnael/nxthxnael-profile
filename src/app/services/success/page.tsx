@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { REFERENCE_PATTERN, verifyTransaction } from "@/lib/paystack";
-import { checkCheckoutRateLimit } from "@/lib/rate-limit";
+import { checkCheckoutRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const metadata: Metadata = {
   title: "Payment status",
@@ -12,7 +12,7 @@ async function getTransactionStatus(reference: string | undefined) {
   if (!reference || !REFERENCE_PATTERN.test(reference)) return null;
 
   // Each verify costs a Paystack API call, so meter it like checkout.
-  const ip = (await headers()).get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(await headers());
   if (!(await checkCheckoutRateLimit(ip))) return null;
 
   try {

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ipAddress } from "@vercel/functions";
 import { initializeTransaction } from "@/lib/paystack";
 import { getPackageById, currency } from "@/content/services";
-import { checkCheckoutRateLimit } from "@/lib/rate-limit";
+import { checkCheckoutRateLimit, getClientIp } from "@/lib/rate-limit";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -44,7 +43,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const ip = ipAddress(request) ?? "unknown";
+  const ip = getClientIp(request.headers);
   const withinLimit = await checkCheckoutRateLimit(ip);
   if (!withinLimit) {
     return NextResponse.redirect(
