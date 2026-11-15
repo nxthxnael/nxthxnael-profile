@@ -63,6 +63,26 @@ Every request is verified against the `x-paystack-signature` header (HMAC-SHA512
 
 Both env vars are optional — without them, rate limiting and replay-dedup fail **open** (requests are allowed, a `console.warn` is logged) rather than breaking checkout before you've set this up.
 
+## Client area
+
+Project pages stay public. A project with `clientArea: true` in [`src/content/projects.ts`](src/content/projects.ts) also gets a **Client access** link to `/work/<slug>/client`. There, a client signs in with a one-time email link and sees that project's private links and files.
+
+- **Who sees what** lives in Supabase (`supabase/migrations/`): `project_members` lists the emails allowed on each project slug, and `project_resources` lists the links and files they see. Row level security enforces it in the database, so a client only ever reads their own projects. Restrictive storage policies keep `client-files` that way even if a broader read policy is added later.
+- **Files** go in the private `client-files` storage bucket under `<slug>/...`. A client can download **only files listed** in `project_resources` (`kind = 'file'`, exact `storage_path`); anything else in the folder stays private. Download links expire after 5 minutes.
+- **Sign-in links** are only emailed to addresses on the project's member list, checked on the server with the secret key. Every answer looks the same, sets the same cookies (strangers run the same sign-in against a local stub) and takes at least 2 seconds, so the form never reveals who is a client. Sign-in is rate limited per IP and per address (5 per 10 minutes each) and **fails closed**: without a working Upstash limiter it is refused.
+- **Redirects** use `SITE_URL` only, never the request's host.
+- **Sessions end 12 hours after sign-in**, timed from the session's own sign-in (`amr` in its JWT): the proxy signs that device out (`src/lib/session.ts`), and the database refuses reads from older sessions too (`client_session_is_fresh`). **Signing out ends database access at once**: the database also requires the token's session to still exist in `auth.sessions`, so a signed-out token is refused before it expires.
+- **Never cached offline**: the service worker serves client-area and `/auth` pages network-only, so private links never stay in the browser's offline cache.
+- **Passwords never go here.** Share credentials through a password manager.
+
+Setup:
+
+1. Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` and `SITE_URL` (see `.env.example`) locally and in Vercel, plus the Upstash variables, which client sign-in requires.
+2. In Supabase → Authentication → URL Configuration, set the Site URL to `https://nxthxnael.dev` and add `https://nxthxnael.dev/**` and `http://localhost:3000/**` as redirect URLs. The wildcard matters: sign-in links go to `/auth/callback?next=…`, and an exact URL without the query may not match.
+3. In Supabase → Authentication → Providers → Email, set **Email OTP Expiration** to `900` (15 minutes), which also limits how long a sign-in link works. The client area tells clients their link lasts 15 minutes, so keep the two in step.
+4. Add a custom SMTP sender (for example Resend) under Authentication → SMTP. Supabase's built-in email only reaches members of your Supabase organisation, so clients won't get links without it.
+5. For each client: add a row to `project_members` (lowercase email), add rows to `project_resources`, upload files under `client-files/<slug>/`, and set `clientArea: true` on the project.
+
 ## Deploy
 
 Designed to deploy on [Vercel](https://vercel.com/new). Required: `PAYSTACK_SECRET_KEY`, plus `PAYSTACK_PLAN_CARE` and `PAYSTACK_PLAN_GROW` for the Care and Grow plans to be purchasable (without them those checkouts show a "not set up" message). Optional but recommended: `DISCORD_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.

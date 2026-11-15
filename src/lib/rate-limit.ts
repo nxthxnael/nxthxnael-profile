@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
@@ -19,8 +20,9 @@ export function getClientIp(headers: { get(name: string): string | null }) {
 
 if (!redis) {
   console.warn(
-    "UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN not set — rate " +
-      "limiting and webhook replay protection are disabled (failing open).",
+    "UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN not set — checkout and " +
+      "webhook rate limiting and replay protection are disabled (failing open), " +
+      "and client sign-in is refused (failing closed).",
   );
 }
 
@@ -37,6 +39,24 @@ const webhookLimiter = redis
       redis,
       limiter: Ratelimit.slidingWindow(30, "60 s"),
       prefix: "ratelimit:webhook",
+    })
+  : null;
+
+const signInLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "600 s"),
+      prefix: "ratelimit:sign-in",
+    })
+  : null;
+
+// Per address too, so requests spread over many IPs cannot flood one inbox; at
+// worst a flood pauses that address's links for ten minutes.
+const signInEmailLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "600 s"),
+      prefix: "ratelimit:sign-in-email",
     })
   : null;
 
@@ -58,6 +78,30 @@ export const checkCheckoutRateLimit = (ip: string) =>
 
 export const checkWebhookRateLimit = (ip: string) =>
   checkLimit(webhookLimiter, ip);
+
+/**
+ * Fails closed: "unavailable" when Upstash is missing or errors, so sign-in
+ * emails are never sent without a cap, and an outage isn't blamed on the client.
+ */
+export async function checkSignInRateLimit(
+  ip: string,
+  email: string,
+): Promise<"ok" | "limited" | "unavailable"> {
+  if (!signInLimiter || !signInEmailLimiter) return "unavailable";
+
+  try {
+    // Hashed, so Redis never holds the address itself.
+    const emailKey = createHash("sha256").update(email).digest("hex");
+    const [byIp, byEmail] = await Promise.all([
+      signInLimiter.limit(ip),
+      signInEmailLimiter.limit(emailKey),
+    ]);
+    return byIp.success && byEmail.success ? "ok" : "limited";
+  } catch (error) {
+    console.error("Rate limiter unavailable, refusing sign-in", error);
+    return "unavailable";
+  }
+}
 
 // Comfortably longer than Paystack's longest documented retry window
 // (72 hours for live-mode webhooks), so genuine retries are deduped too.
