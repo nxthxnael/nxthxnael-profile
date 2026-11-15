@@ -145,6 +145,16 @@ function PackageCard({ pkg }: { pkg: ServicePackage }) {
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
           {pkg.offersCare ? <AddCareCheckbox /> : null}
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input type="checkbox" name="acceptTerms" required className="mt-0.5" />
+            <span>
+              I agree to the{" "}
+              <Link href="/terms" target="_blank" className="text-accent hover:underline">
+                terms
+              </Link>
+              .
+            </span>
+          </label>
           <button
             type="submit"
             className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"

@@ -3,6 +3,9 @@ import { initializeTransaction } from "@/lib/paystack";
 import { getPackageById, currency } from "@/content/services";
 import { checkCheckoutRateLimit, getClientIp } from "@/lib/rate-limit";
 
+/** Recorded on each order as evidence of which terms the client accepted. */
+const termsVersion = "2026-11-15";
+
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -71,6 +74,13 @@ export async function POST(request: NextRequest) {
 
   if (kind === "package") {
     const pkg = getPackageById(String(formData.get("packageId") ?? ""));
+    // The browser enforces the checkbox too; this covers forged or scripted posts.
+    if (formData.get("acceptTerms") !== "on") {
+      return NextResponse.redirect(
+        `${origin}/services/cancel?error=terms_required`,
+        { status: 303 },
+      );
+    }
     if (!pkg || pkg.bookCall) {
       return NextResponse.redirect(
         `${origin}/services/cancel?error=unknown_package`,
@@ -89,7 +99,12 @@ export async function POST(request: NextRequest) {
       }
     }
     amountInKobo = pkg.priceInKobo;
-    metadata = { kind: "package", packageId: pkg.id, packageName: pkg.name };
+    metadata = {
+      kind: "package",
+      packageId: pkg.id,
+      packageName: pkg.name,
+      termsAccepted: termsVersion,
+    };
     if (pkg.offersCare && formData.get("addCare") === "on") {
       metadata.addCare = true;
     }
