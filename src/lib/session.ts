@@ -1,4 +1,4 @@
-/** Clients are signed out this long after they used their sign-in link. */
+/** Clients are signed out this long after they used their sign-in link (also in SQL as 43200 s). */
 export const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 /**
@@ -12,5 +12,6 @@ export function isSessionExpired(amr: unknown, now = Date.now()) {
     ? amr.map((entry) => entry?.timestamp).filter((t): t is number => typeof t === "number")
     : [];
   if (timestamps.length === 0) return true;
-  return now - Math.min(...timestamps) * 1000 > SESSION_MAX_AGE_MS;
+  // ">=" matches the database's client_session_is_fresh, which needs age < 12 hours.
+  return now - Math.min(...timestamps) * 1000 >= SESSION_MAX_AGE_MS;
 }

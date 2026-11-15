@@ -8,11 +8,11 @@ const at = (iso: string) => Date.parse(iso);
 
 test("a session is valid for 12 hours after its own sign-in", () => {
   assert.equal(isSessionExpired(amr, at("2026-11-15T08:01:00.000Z")), false);
-  assert.equal(isSessionExpired(amr, at("2026-11-15T20:00:00.000Z")), false);
+  assert.equal(isSessionExpired(amr, at("2026-11-15T19:59:59.000Z")), false);
 });
 
-test("a session expires after 12 hours", () => {
-  assert.equal(isSessionExpired(amr, at("2026-11-15T20:00:01.000Z")), true);
+test("a session expires at 12 hours, the same boundary the database uses", () => {
+  assert.equal(isSessionExpired(amr, at("2026-11-15T20:00:00.000Z")), true);
 });
 
 test("the earliest sign-in in the session counts, so a later step cannot extend it", () => {
