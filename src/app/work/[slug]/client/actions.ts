@@ -49,6 +49,6 @@ export async function requestLink(slug: string, formData: FormData) {
 }
 
 export async function signOut(slug: string) {
-  await (await createClient()).auth.signOut();
+  await (await createClient()).auth.signOut({ scope: "local" });
   redirect(`/work/${slug}/client`);
 }

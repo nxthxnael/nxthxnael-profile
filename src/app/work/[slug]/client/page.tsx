@@ -74,13 +74,11 @@ async function ClientArea({
   error?: string;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const claims = (await supabase.auth.getClaims()).data?.claims;
 
   // The proxy signs expired sessions out; this covers a request it didn't see.
-  const expired = Boolean(user && isSessionExpired(user.last_sign_in_at));
-  if (!user || expired) {
+  const expired = Boolean(claims && isSessionExpired(claims.amr));
+  if (!claims || expired) {
     return (
       <form action={requestLink.bind(null, slug)} className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">
@@ -149,7 +147,7 @@ async function ClientArea({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">Signed in as {user.email}.</p>
+      <p className="text-sm text-muted-foreground">Signed in as {claims.email}.</p>
       {resources.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           There&apos;s nothing here for this account. If you think that&apos;s

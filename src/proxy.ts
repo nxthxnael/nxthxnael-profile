@@ -25,14 +25,12 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Validating the user is what triggers a refresh of an expired access token.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verifying the claims also refreshes an expired access token.
+  const { data } = await supabase.auth.getClaims();
 
-  // Ends the session 12 hours after sign-in; signOut clears the cookies above.
-  if (user && isSessionExpired(user.last_sign_in_at)) {
-    await supabase.auth.signOut();
+  // Ends this device's session 12 hours after its sign-in; signOut clears the cookies above.
+  if (data && isSessionExpired(data.claims.amr)) {
+    await supabase.auth.signOut({ scope: "local" });
   }
 
   return response;
