@@ -47,8 +47,8 @@ export default function ServicesPage() {
               </h2>
               {plans.length > 0 ? (
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                  Founding rates for my first 5 clients. Every build comes with
-                  the first {freeCareMonths} months of Care free.
+                  Founding rates for my first 5 clients. Starter and Business
+                  builds can add Care with the first {freeCareMonths} months free.
                 </p>
               ) : null}
 
