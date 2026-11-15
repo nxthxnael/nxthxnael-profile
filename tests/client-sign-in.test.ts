@@ -91,7 +91,9 @@ async function submit(slug: string, email: string) {
     });
   while (!settled) {
     await new Promise((resolve) => setImmediate(resolve));
-    mock.timers.tick(100);
+    // Jump straight to each pending timer: the clock moves only by the waits
+    // requestLink sets, so a wait even 1 ms short of the minimum fails.
+    mock.timers.runAll();
   }
   lastElapsedMs = Date.now();
   mock.timers.reset();
