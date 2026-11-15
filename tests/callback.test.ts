@@ -37,3 +37,10 @@ test("an off-site next falls back to the home page on the canonical site", async
   const response = await callback("next=%2F%2Fevil.com");
   assert.equal(response.headers.get("location"), "https://nxthxnael.dev/?error=link_expired");
 });
+
+test("a tab or newline in next cannot steer the redirect off-site", async () => {
+  for (const next of ["%2F%09%2Fevil.com", "%2F%0A%2Fevil.com", "%2F%0D%2Fevil.com"]) {
+    const response = await callback(`next=${next}`);
+    assert.equal(new URL(response.headers.get("location")!).origin, "https://nxthxnael.dev", next);
+  }
+});

@@ -7,7 +7,7 @@ test("keeps paths on this site", () => {
 });
 
 test("rejects anything that could leave the site", () => {
-  for (const next of [null, "", "https://evil.com", "//evil.com", "/\\evil.com", "evil.com"]) {
+  for (const next of [null, "", "https://evil.com", "//evil.com", "/\\evil.com", "evil.com", "/\t/evil.com", "/\n/evil.com", "/\r/evil.com", "/ /evil.com", "/a\\b"]) {
     assert.equal(safeRedirectPath(next), "/", String(next));
   }
 });

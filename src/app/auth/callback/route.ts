@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
   if (!site) return new NextResponse("Not found", { status: 404 });
 
   const { searchParams } = request.nextUrl;
-  const next = safeRedirectPath(searchParams.get("next"));
+  // Belt and braces: even a path that slips past the check must resolve on-site.
+  const path = safeRedirectPath(searchParams.get("next"));
+  const next = new URL(path, site).origin === site ? path : "/";
   const code = searchParams.get("code");
 
   if (code) {
