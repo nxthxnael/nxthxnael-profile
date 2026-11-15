@@ -72,9 +72,9 @@ const { sendDiscordNotification } = await import("../src/lib/discord.ts");
 
 const REFERENCE = "ref_test_12345";
 
-function deliver(data: Record<string, unknown> = {}) {
+function deliver(data: Record<string, unknown> = {}, event = "charge.success") {
   const body = JSON.stringify({
-    event: "charge.success",
+    event,
     data: {
       reference: REFERENCE,
       amount: 1_200_000,
@@ -178,6 +178,22 @@ test("a build paid by M-Pesa is flagged for manual Care set-up", async () => {
 test("a plan renewal is labelled as a subscription, not a tip", async () => {
   await deliver({ reference: "ref_renewal_12345", plan: { name: "Care" }, metadata: null });
   assert.equal(discordTitles.at(-1), "Subscription renewed");
+});
+
+test("a failed renewal alerts the operator with the plan and client", async () => {
+  await deliver(
+    {
+      amount: 300_000,
+      customer: { email: "client@example.com" },
+      subscription: { subscription_code: "SUB_unit", plan: { name: "Care" } },
+    },
+    "invoice.payment_failed",
+  );
+  assert.equal(discordTitles.at(-1), "Subscription payment failed");
+  assert.deepEqual(
+    discordFields.at(-1)!.map((field) => field.value),
+    ["Care", "Ksh\u00a03,000", "client@example.com", "SUB_unit"],
+  );
 });
 
 test("the Discord post is aborted after 3 seconds", async () => {

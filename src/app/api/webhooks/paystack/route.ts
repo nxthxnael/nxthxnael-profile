@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendDiscordNotification } from "@/lib/discord";
 import { createSubscription, isValidSignature } from "@/lib/paystack";
-import { formatPrice, freeCareMonths } from "@/content/services";
+import { currency, formatPrice, freeCareMonths } from "@/content/services";
 import {
   checkWebhookRateLimit,
   forgetWebhookReference,
@@ -144,6 +144,38 @@ export async function POST(request: NextRequest) {
         });
       });
     }
+  }
+
+  // Renewals that fail start the unpaid-plan timeline in the terms (Part B, 9).
+  if (event.event === "invoice.payment_failed") {
+    const failed = event.data as unknown as {
+      amount?: number;
+      customer?: { email?: string };
+      subscription?: { subscription_code?: string; plan?: { name?: string } };
+    };
+
+    await sendDiscordNotification({
+      title: "Subscription payment failed",
+      fields: [
+        {
+          name: "Plan",
+          value: failed.subscription?.plan?.name ?? "unknown",
+          inline: true,
+        },
+        {
+          name: "Amount",
+          value: failed.amount ? formatPrice(failed.amount, currency) : "unknown",
+          inline: true,
+        },
+        { name: "Client", value: failed.customer?.email ?? "unknown", inline: true },
+        {
+          name: "Subscription",
+          value: failed.subscription?.subscription_code ?? "unknown",
+        },
+      ],
+    }).catch((error) => {
+      console.error("Failed-renewal notification failed", { error });
+    });
   }
 
   return NextResponse.json({ received: true });
