@@ -11,6 +11,9 @@ import { createAdminClient, createClient, isSupabaseConfigured } from "@/lib/sup
 // (whose link is emailed) and a stranger (no email) cannot be told apart by timing.
 const MIN_RESPONSE_MS = 2000;
 
+// What Supabase answers a sent sign-in link with, minus the email.
+const answerLocally: typeof fetch = async () => Response.json({});
+
 /** Emails a sign-in link, but only to addresses listed for this project. */
 export async function requestLink(slug: string, formData: FormData) {
   const page = `/work/${slug}/client`;
@@ -38,15 +41,16 @@ export async function requestLink(slug: string, formData: FormData) {
     redirect(`${page}?error=unavailable`);
   }
 
-  if (isMember) {
-    const { error: sendError } = await (await createClient()).auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${site}/auth/callback?next=${encodeURIComponent(page)}`,
-      },
-    });
-    if (sendError) console.error("Sign-in email failed", { slug, error: sendError });
-  }
+  // Strangers run the same sign-in against a stub that answers locally: they get
+  // the same PKCE verifier cookie a member does, but nothing reaches Supabase.
+  const supabase = await createClient(isMember ? undefined : answerLocally);
+  const { error: sendError } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${site}/auth/callback?next=${encodeURIComponent(page)}`,
+    },
+  });
+  if (sendError) console.error("Sign-in email failed", { slug, error: sendError });
 
   // The same answer, after the same minimum wait, whether or not a link was sent.
   await new Promise((resolve) =>

@@ -12,8 +12,10 @@ let sendError: unknown = null;
 let signOutError: unknown = null;
 let limiterResult: "ok" | "limited" | "unavailable" = "ok";
 let lastElapsedMs = 0;
+// Real sends only; a stranger's sign-in runs against a local stub instead.
 const sentLinks: { email: string; options: { emailRedirectTo: string } }[] = [];
-const checked: { project: string; address: string }[] = [];
+const stubbedSends: string[] = [];
+const checked: { name: string; project: string; address: string }[] = [];
 
 mock.module("next/headers", {
   namedExports: {
@@ -41,16 +43,22 @@ mock.module("@/lib/supabase", {
   namedExports: {
     isSupabaseConfigured: true,
     createAdminClient: () => ({
-      rpc: async (_name: string, args: { project: string; address: string }) => {
-        checked.push(args);
+      rpc: async (name: string, args: { project: string; address: string }) => {
+        checked.push({ name, ...args });
         return { data: isMember, error: rpcError };
       },
     }),
-    createClient: async () => ({
+    createClient: async (fetch?: typeof globalThis.fetch) => ({
       auth: {
         signInWithOtp: async (args: (typeof sentLinks)[number]) => {
-          sentLinks.push(args);
-          return { error: sendError };
+          if (!fetch) {
+            sentLinks.push(args);
+            return { error: sendError };
+          }
+          // The stub must answer like Supabase does, without a network call.
+          const reply = await fetch("https://stub.invalid/auth/v1/otp", { method: "POST" });
+          stubbedSends.push(`${args.email} ${reply.status}`);
+          return { error: null };
         },
         signOut: async () => ({ error: signOutError }),
       },
@@ -91,6 +99,7 @@ beforeEach(() => {
   signOutError = null;
   limiterResult = "ok";
   sentLinks.length = 0;
+  stubbedSends.length = 0;
   checked.length = 0;
 });
 
@@ -99,7 +108,10 @@ test("a member gets a link back to their client page", async () => {
   const landed = await submit("client-proj", " Client@Example.com ");
 
   assert.equal(landed, "/work/client-proj/client?sent=1");
-  assert.deepEqual(checked, [{ project: "client-proj", address: "client@example.com" }]);
+  assert.deepEqual(checked, [
+    { name: "can_access_project", project: "client-proj", address: "client@example.com" },
+  ]);
+  assert.equal(stubbedSends.length, 0);
   assert.equal(sentLinks.length, 1);
   assert.equal(sentLinks[0].email, "client@example.com");
   assert.equal(
@@ -113,6 +125,8 @@ test("a stranger gets the same answer and no email", async () => {
 
   assert.equal(landed, "/work/client-proj/client?sent=1");
   assert.equal(sentLinks.length, 0);
+  // Same sign-in call (so the same PKCE cookie) as a member, answered locally.
+  assert.deepEqual(stubbedSends, ["stranger@example.com 200"]);
 });
 
 test("no email is sent when the membership check fails", async () => {

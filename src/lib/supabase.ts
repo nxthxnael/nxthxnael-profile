@@ -19,8 +19,11 @@ export const isSupabaseConfigured = Boolean(
     process.env.UPSTASH_REDIS_REST_TOKEN,
 );
 
-/** A client acting as the signed-in visitor, so row level security applies. */
-export async function createClient() {
+/**
+ * A client acting as the signed-in visitor, so row level security applies.
+ * `fetch` replaces the network for this client only (see requestLink).
+ */
+export async function createClient(fetch?: typeof globalThis.fetch) {
   if (!url || !publishableKey) {
     throw new Error("SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY must be set.");
   }
@@ -28,6 +31,7 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(url, publishableKey, {
+    ...(fetch && { global: { fetch } }),
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll(cookiesToSet) {
