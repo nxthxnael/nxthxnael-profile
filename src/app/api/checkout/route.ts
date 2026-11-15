@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initializeTransaction } from "@/lib/paystack";
 import { getPackageById, currency } from "@/content/services";
+import { termsVersion } from "@/content/terms";
 import { checkCheckoutRateLimit, getClientIp } from "@/lib/rate-limit";
-
-/** Recorded on each order as evidence of which terms the client accepted. */
-const termsVersion = "2026-11-15";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
