@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendDiscordNotification } from "@/lib/discord";
-import { isValidSignature } from "@/lib/paystack";
-import { formatPrice } from "@/content/services";
+import { createSubscription, isValidSignature } from "@/lib/paystack";
+import { currency, formatPrice, freeCareMonths } from "@/content/services";
 import {
   checkWebhookRateLimit,
   forgetWebhookReference,
@@ -13,12 +13,48 @@ type ChargeSuccessData = {
   reference: string;
   amount: number;
   currency: string;
-  customer?: { email?: string };
+  paid_at?: string;
+  customer?: { email?: string; customer_code?: string };
+  authorization?: { authorization_code?: string; reusable?: boolean };
+  plan?: { name?: string } | null;
   metadata?: {
     kind?: string;
     packageName?: string;
+    addCare?: boolean;
   } | null;
 };
+
+/** Subscribes the build's card to Care, first charge after the free months. */
+async function startFreeCare(data: ChargeSuccessData): Promise<string> {
+  const plan = process.env.PAYSTACK_PLAN_CARE;
+  const customer = data.customer?.customer_code ?? data.customer?.email;
+  const authorization = data.authorization?.authorization_code;
+
+  if (!plan) return "Set up manually: PAYSTACK_PLAN_CARE is not set";
+  // M-Pesa and bank payments can't be charged again later; only cards can.
+  if (!customer || !authorization || !data.authorization?.reusable) {
+    return "Set up manually: payment method can't be charged again";
+  }
+
+  // From the payment, not this delivery: Paystack can deliver or retry late.
+  const startDate = data.paid_at ? new Date(data.paid_at) : new Date();
+  const day = startDate.getDate();
+  startDate.setMonth(startDate.getMonth() + freeCareMonths);
+  // setMonth overflows short months (31 Dec + 2 = 3 Mar); clamp to the last day.
+  if (startDate.getDate() !== day) startDate.setDate(0);
+
+  try {
+    await createSubscription({ customer, plan, authorization, startDate });
+    return `Subscribed, first charge ${startDate.toDateString()}`;
+  } catch (error) {
+    console.error("Failed to start free Care subscription", {
+      reference: data.reference,
+      error,
+    });
+    // A timeout can hide a subscription Paystack did create, so check before redoing it.
+    return "Check Paystack, then set up manually: the request failed or timed out and may have gone through";
+  }
+}
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request.headers);
@@ -49,13 +85,23 @@ export async function POST(request: NextRequest) {
 
     const metadata = data.metadata ?? {};
     const isPackage = metadata.kind === "package";
+    // Subscription renewals carry the plan but not our checkout metadata.
+    const planName = data.plan?.name;
+    const packageName = metadata.packageName ?? planName;
 
     try {
       await sendDiscordNotification({
-        title: isPackage ? "New booking" : "New tip received",
+        title: isPackage
+          ? "New booking"
+          : planName
+            ? "Subscription renewed"
+            : "New tip received",
         fields: [
-          ...(isPackage && metadata.packageName
-            ? [{ name: "Package", value: metadata.packageName, inline: true }]
+          ...((isPackage || planName) && packageName
+            ? [{ name: "Package", value: packageName, inline: true }]
+            : []),
+          ...(isPackage && metadata.addCare
+            ? [{ name: "Care plan", value: "Requested, result follows", inline: true }]
             : []),
           {
             name: "Amount",
@@ -79,6 +125,57 @@ export async function POST(request: NextRequest) {
       await forgetWebhookReference(data.reference);
       return NextResponse.json({ error: "Notification failed" }, { status: 500 });
     }
+
+    // Only after the alert succeeds: a retried delivery must not subscribe twice.
+    if (isPackage && metadata.addCare) {
+      const careStatus = await startFreeCare(data);
+      // Also in the logs, in case Discord is unset or the alert below fails.
+      console.info("Care plan", { reference: data.reference, careStatus });
+      await sendDiscordNotification({
+        title: "Care plan",
+        fields: [
+          { name: "Status", value: careStatus },
+          { name: "Reference", value: data.reference },
+        ],
+      }).catch((error) => {
+        console.error("Care plan notification failed", {
+          reference: data.reference,
+          error,
+        });
+      });
+    }
+  }
+
+  // Renewals that fail start the unpaid-plan timeline in the terms (Part B, 9).
+  if (event.event === "invoice.payment_failed") {
+    const failed = event.data as unknown as {
+      amount?: number;
+      customer?: { email?: string };
+      subscription?: { subscription_code?: string; plan?: { name?: string } };
+    };
+
+    await sendDiscordNotification({
+      title: "Subscription payment failed",
+      fields: [
+        {
+          name: "Plan",
+          value: failed.subscription?.plan?.name ?? "unknown",
+          inline: true,
+        },
+        {
+          name: "Amount",
+          value: failed.amount ? formatPrice(failed.amount, currency) : "unknown",
+          inline: true,
+        },
+        { name: "Client", value: failed.customer?.email ?? "unknown", inline: true },
+        {
+          name: "Subscription",
+          value: failed.subscription?.subscription_code ?? "unknown",
+        },
+      ],
+    }).catch((error) => {
+      console.error("Failed-renewal notification failed", { error });
+    });
   }
 
   return NextResponse.json({ received: true });

@@ -40,9 +40,13 @@ test("rejects everything when the secret key is unset", () => {
 // Update this table when a price changes on purpose: that is the point. It
 // would have caught the 35_000_00 typo, which is a valid whole number.
 const expectedPricesInKobo: Record<string, number> = {
-  "website-audit": 1_500_000,
-  "landing-page-build": 3_500_000,
-  "web-app-mvp": 35_000_000,
+  "starter-site": 1_500_000,
+  "business-site": 4_000_000,
+  "custom-build": 6_000_000,
+  "site-seo-audit": 400_000,
+  "care-plan": 300_000,
+  "grow-plan": 700_000,
+  "partner-plan": 1_000_000,
   "brand-ui-kit": 4_500_000,
   "product-design-sprint": 12_000_000,
   "startup-advisory": 1_200_000,

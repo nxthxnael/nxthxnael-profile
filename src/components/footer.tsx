@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { socials } from "@/content/contact";
 
 export function Footer() {
@@ -6,6 +7,9 @@ export function Footer() {
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-6 py-10 text-xs text-muted-foreground sm:flex-row sm:justify-between">
         <p>© {new Date().getFullYear()} nxthxnael. All rights reserved.</p>
         <div className="flex items-center gap-4">
+          <Link href="/terms" className="transition-colors hover:text-foreground">
+            Terms
+          </Link>
           {socials.map((social) => (
             <a
               key={social.href}
