@@ -7,12 +7,13 @@ export const metadata: Metadata = {
 
 const errorMessages: Record<string, string> = {
   not_configured:
-    "Payments aren't set up yet — add a Paystack secret key to enable checkout.",
+    "Payments for this package aren't set up yet — please get in touch instead.",
   checkout_failed:
     "Something went wrong starting your payment. Please try again in a moment.",
   unknown_package: "That package couldn't be found.",
   invalid_amount: "Please enter a valid amount.",
   invalid_email: "Please enter a valid email address.",
+  terms_required: "Please agree to the terms before checking out.",
   invalid_request: "That request wasn't valid.",
   rate_limited: "Too many attempts — please wait a minute and try again.",
 };

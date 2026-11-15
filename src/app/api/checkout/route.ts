@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initializeTransaction } from "@/lib/paystack";
 import { getPackageById, currency } from "@/content/services";
+import { termsVersion } from "@/content/terms";
 import { checkCheckoutRateLimit, getClientIp } from "@/lib/rate-limit";
 
 function isValidEmail(email: string) {
@@ -66,18 +67,45 @@ export async function POST(request: NextRequest) {
   }
 
   let amountInKobo: number;
+  let plan: string | undefined;
   let metadata: Record<string, unknown>;
 
   if (kind === "package") {
     const pkg = getPackageById(String(formData.get("packageId") ?? ""));
-    if (!pkg) {
+    if (!pkg || pkg.bookCall) {
       return NextResponse.redirect(
         `${origin}/services/cancel?error=unknown_package`,
         { status: 303 },
       );
     }
+    // The browser enforces the checkbox too; this covers forged or scripted posts.
+    if (formData.get("acceptTerms") !== "on") {
+      return NextResponse.redirect(
+        `${origin}/services/cancel?error=terms_required`,
+        { status: 303 },
+      );
+    }
+    if (pkg.billing === "monthly") {
+      plan = pkg.planEnvKey ? process.env[pkg.planEnvKey] : undefined;
+      // Without a plan code this would be a one-off charge, not a subscription.
+      if (!plan) {
+        console.error("Checkout has no Paystack plan code", { packageId: pkg.id });
+        return NextResponse.redirect(
+          `${origin}/services/cancel?error=not_configured`,
+          { status: 303 },
+        );
+      }
+    }
     amountInKobo = pkg.priceInKobo;
-    metadata = { kind: "package", packageId: pkg.id, packageName: pkg.name };
+    metadata = {
+      kind: "package",
+      packageId: pkg.id,
+      packageName: pkg.name,
+      termsAccepted: termsVersion,
+    };
+    if (pkg.offersCare && formData.get("addCare") === "on") {
+      metadata.addCare = true;
+    }
   } else if (kind === "tip") {
     const amount = Number(formData.get("amount"));
     if (!Number.isFinite(amount) || amount < 1 || amount > 1_000_000) {
@@ -102,6 +130,7 @@ export async function POST(request: NextRequest) {
       currency,
       callbackUrl,
       cancelUrl,
+      plan,
       metadata,
     });
 
