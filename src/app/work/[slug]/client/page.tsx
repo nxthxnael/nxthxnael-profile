@@ -74,7 +74,12 @@ async function ClientArea({
   error?: string;
 }) {
   const supabase = await createClient();
-  const claims = (await supabase.auth.getClaims()).data?.claims;
+  // getUser asks the auth server, so a revoked session or deleted user is refused
+  // at once; the verified claims then give this session's own sign-in time.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const claims = user ? (await supabase.auth.getClaims()).data?.claims : undefined;
 
   // The proxy signs expired sessions out; this covers a request it didn't see.
   const expired = Boolean(claims && isSessionExpired(claims.amr));
@@ -149,7 +154,7 @@ async function ClientArea({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">Signed in as {claims.email}.</p>
+      <p className="text-sm text-muted-foreground">Signed in as {user?.email}.</p>
       {resources.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           There&apos;s nothing here for this account. If you think that&apos;s
