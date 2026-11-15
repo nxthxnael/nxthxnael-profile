@@ -13,6 +13,7 @@ const errorMessages: Record<string, string> = {
   unknown_package: "That package couldn't be found.",
   invalid_amount: "Please enter a valid amount.",
   invalid_email: "Please enter a valid email address.",
+  terms_required: "Please agree to the terms before checking out.",
   invalid_request: "That request wasn't valid.",
   rate_limited: "Too many attempts — please wait a minute and try again.",
 };
