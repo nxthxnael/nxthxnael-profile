@@ -31,14 +31,14 @@ export async function requestLink(slug: string, formData: FormData) {
   }
 
   if (isMember) {
-    // Supabase only honours redirect URLs on its allowlist, so a forged Host
-    // header falls back to the Site URL rather than an attacker's domain.
-    const host = requestHeaders.get("host");
-    const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
+    // Supabase only honours redirect URLs on its allowlist, so a forged header
+    // falls back to the Site URL rather than an attacker's domain.
+    const origin =
+      requestHeaders.get("origin") ?? `https://${requestHeaders.get("host")}`;
     const { error: sendError } = await (await createClient()).auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${protocol}://${host}/auth/callback?next=${encodeURIComponent(page)}`,
+        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(page)}`,
       },
     });
     if (sendError) console.error("Sign-in email failed", { slug, error: sendError });
