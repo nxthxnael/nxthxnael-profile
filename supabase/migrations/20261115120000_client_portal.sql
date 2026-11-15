@@ -44,7 +44,7 @@ create policy "members read their project resources" on public.project_resources
 -- Private files live under client-files/<project slug>/...
 insert into storage.buckets (id, name, public)
 values ('client-files', 'client-files', false)
-on conflict (id) do nothing;
+on conflict (id) do update set public = false;
 
 create policy "members read their project files" on storage.objects
   for select to authenticated
@@ -57,8 +57,7 @@ create policy "members read their project files" on storage.objects
     )
   );
 
--- Lets the sign-in form check an email before sending a link, without
--- exposing the member list: it answers only yes or no for one pair.
+-- Lets the site's server check an email before sending a sign-in link.
 create function public.can_access_project(project text, address text)
 returns boolean
 language sql
@@ -72,5 +71,6 @@ as $$
   );
 $$;
 
-revoke execute on function public.can_access_project(text, text) from public;
-grant execute on function public.can_access_project(text, text) to anon, authenticated;
+-- Server-only from the start: callable with the secret key, never the public one.
+revoke execute on function public.can_access_project(text, text) from public, anon, authenticated;
+grant execute on function public.can_access_project(text, text) to service_role;

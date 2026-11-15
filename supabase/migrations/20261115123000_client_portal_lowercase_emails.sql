@@ -47,5 +47,4 @@ as $$
     where m.project_slug = project and m.email = lower(address)
   );
 $$;
-
-drop extension if exists citext;
+-- citext stays installed: other objects may depend on it.
