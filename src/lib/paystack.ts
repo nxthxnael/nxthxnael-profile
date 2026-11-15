@@ -51,6 +51,8 @@ export async function initializeTransaction(
       callback_url: params.callbackUrl,
       reference: params.reference,
       plan: params.plan,
+      // Only cards can be charged again, so a plan's first payment must be by card.
+      channels: params.plan ? ["card"] : undefined,
       metadata: {
         cancel_action: params.cancelUrl,
         ...params.metadata,
