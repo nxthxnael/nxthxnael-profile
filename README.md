@@ -68,14 +68,15 @@ Both env vars are optional — without them, rate limiting and replay-dedup fail
 Project pages stay public. A project with `clientArea: true` in [`src/content/projects.ts`](src/content/projects.ts) also gets a **Client access** link to `/work/<slug>/client`. There, a client signs in with a one-time email link and sees that project's private links and files.
 
 - **Who sees what** lives in Supabase (`supabase/migrations/`): `project_members` lists the emails allowed on each project slug, and `project_resources` lists the links and files they see. Row level security enforces it in the database, so a client only ever reads their own projects.
-- **Files** go in the private `client-files` storage bucket under `<slug>/...`; the page hands out download links that expire after 5 minutes.
-- **Sign-in links** are only emailed to addresses on the project's member list, checked on the server with the secret key, and the form answers the same way either way.
-- **Sessions end 12 hours after sign-in** (`src/lib/session.ts`): the proxy signs the client out and they request a new link.
+- **Files** go in the private `client-files` storage bucket under `<slug>/...`. A client can download **only files listed** in `project_resources` (`kind = 'file'`, exact `storage_path`); anything else in the folder stays private. Download links expire after 5 minutes.
+- **Sign-in links** are only emailed to addresses on the project's member list, checked on the server with the secret key. Every answer looks the same and takes at least 2 seconds, so the form never reveals who is a client. Sign-in is rate limited and **fails closed**: without a working Upstash limiter it is refused.
+- **Redirects** use `SITE_URL` only, never the request's host.
+- **Sessions end 12 hours after sign-in**, timed from the session's own sign-in (`amr` in its JWT): the proxy signs that device out (`src/lib/session.ts`), and the database refuses reads from older sessions too (`client_session_is_fresh`).
 - **Passwords never go here.** Share credentials through a password manager.
 
 Setup:
 
-1. Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` (see `.env.example`) locally and in Vercel.
+1. Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` and `SITE_URL` (see `.env.example`) locally and in Vercel, plus the Upstash variables, which client sign-in requires.
 2. In Supabase → Authentication → URL Configuration, set the Site URL to `https://nxthxnael.dev` and add `https://nxthxnael.dev/**` and `http://localhost:3000/**` as redirect URLs. The wildcard matters: sign-in links go to `/auth/callback?next=…`, and an exact URL without the query may not match.
 3. In Supabase → Authentication → Providers → Email, set **Email OTP Expiration** to `900` (15 minutes), which also limits how long a sign-in link works. The client area tells clients their link lasts 15 minutes, so keep the two in step.
 4. Add a custom SMTP sender (for example Resend) under Authentication → SMTP. Supabase's built-in email only reaches members of your Supabase organisation, so clients won't get links without it.
