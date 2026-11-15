@@ -74,16 +74,16 @@ export async function POST(request: NextRequest) {
 
   if (kind === "package") {
     const pkg = getPackageById(String(formData.get("packageId") ?? ""));
+    if (!pkg || pkg.bookCall) {
+      return NextResponse.redirect(
+        `${origin}/services/cancel?error=unknown_package`,
+        { status: 303 },
+      );
+    }
     // The browser enforces the checkbox too; this covers forged or scripted posts.
     if (formData.get("acceptTerms") !== "on") {
       return NextResponse.redirect(
         `${origin}/services/cancel?error=terms_required`,
-        { status: 303 },
-      );
-    }
-    if (!pkg || pkg.bookCall) {
-      return NextResponse.redirect(
-        `${origin}/services/cancel?error=unknown_package`,
         { status: 303 },
       );
     }
