@@ -14,5 +14,7 @@ export async function GET(request: NextRequest) {
     if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
 
-  return NextResponse.redirect(`${origin}${next}?error=link_expired`);
+  const failed = new URL(next, origin);
+  failed.searchParams.set("error", "link_expired");
+  return NextResponse.redirect(failed);
 }
