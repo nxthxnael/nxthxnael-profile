@@ -27,7 +27,7 @@ export async function requestLink(slug: string, formData: FormData) {
   }
 
   const requestHeaders = await headers();
-  const limit = await checkSignInRateLimit(getClientIp(requestHeaders));
+  const limit = await checkSignInRateLimit(getClientIp(requestHeaders), email);
   if (limit === "limited") redirect(`${page}?error=rate_limited`);
   if (limit === "unavailable") redirect(`${page}?error=unavailable`);
 

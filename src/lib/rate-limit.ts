@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
@@ -49,6 +50,16 @@ const signInLimiter = redis
     })
   : null;
 
+// Per address too, so requests spread over many IPs cannot flood one inbox; at
+// worst a flood pauses that address's links for ten minutes.
+const signInEmailLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "600 s"),
+      prefix: "ratelimit:sign-in-email",
+    })
+  : null;
+
 /** Fails open (allows the request) if Upstash isn't configured or errors. */
 async function checkLimit(limiter: Ratelimit | null, ip: string) {
   if (!limiter) return true;
@@ -74,11 +85,18 @@ export const checkWebhookRateLimit = (ip: string) =>
  */
 export async function checkSignInRateLimit(
   ip: string,
+  email: string,
 ): Promise<"ok" | "limited" | "unavailable"> {
-  if (!signInLimiter) return "unavailable";
+  if (!signInLimiter || !signInEmailLimiter) return "unavailable";
 
   try {
-    return (await signInLimiter.limit(ip)).success ? "ok" : "limited";
+    // Hashed, so Redis never holds the address itself.
+    const emailKey = createHash("sha256").update(email).digest("hex");
+    const [byIp, byEmail] = await Promise.all([
+      signInLimiter.limit(ip),
+      signInEmailLimiter.limit(emailKey),
+    ]);
+    return byIp.success && byEmail.success ? "ok" : "limited";
   } catch (error) {
     console.error("Rate limiter unavailable, refusing sign-in", error);
     return "unavailable";

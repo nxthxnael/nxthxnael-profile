@@ -15,6 +15,7 @@ let lastElapsedMs = 0;
 // Real sends only; a stranger's sign-in runs against a local stub instead.
 const sentLinks: { email: string; options: { emailRedirectTo: string } }[] = [];
 const stubbedSends: string[] = [];
+const limited: string[] = [];
 const checked: { name: string; project: string; address: string }[] = [];
 
 mock.module("next/headers", {
@@ -37,7 +38,13 @@ mock.module("@/content/projects", {
   },
 });
 mock.module("@/lib/rate-limit", {
-  namedExports: { checkSignInRateLimit: async () => limiterResult, getClientIp: () => "ip" },
+  namedExports: {
+    checkSignInRateLimit: async (ip: string, email: string) => {
+      limited.push(`${ip} ${email}`);
+      return limiterResult;
+    },
+    getClientIp: () => "ip",
+  },
 });
 mock.module("@/lib/supabase", {
   namedExports: {
@@ -100,6 +107,7 @@ beforeEach(() => {
   limiterResult = "ok";
   sentLinks.length = 0;
   stubbedSends.length = 0;
+  limited.length = 0;
   checked.length = 0;
 });
 
@@ -112,6 +120,8 @@ test("a member gets a link back to their client page", async () => {
     { name: "can_access_project", project: "client-proj", address: "client@example.com" },
   ]);
   assert.equal(stubbedSends.length, 0);
+  // Limited per IP and per normalized address.
+  assert.deepEqual(limited, ["ip client@example.com"]);
   assert.equal(sentLinks.length, 1);
   assert.equal(sentLinks[0].email, "client@example.com");
   assert.equal(
