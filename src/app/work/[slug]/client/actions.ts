@@ -24,9 +24,9 @@ export async function requestLink(slug: string, formData: FormData) {
   }
 
   const requestHeaders = await headers();
-  if (!(await checkSignInRateLimit(getClientIp(requestHeaders)))) {
-    redirect(`${page}?error=rate_limited`);
-  }
+  const limit = await checkSignInRateLimit(getClientIp(requestHeaders));
+  if (limit === "limited") redirect(`${page}?error=rate_limited`);
+  if (limit === "unavailable") redirect(`${page}?error=unavailable`);
 
   const started = Date.now();
   const { data: isMember, error } = await createAdminClient().rpc(

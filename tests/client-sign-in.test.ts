@@ -9,7 +9,7 @@ process.env.SITE_URL = "http://localhost:3000";
 let isMember = false;
 let rpcError: unknown = null;
 let sendError: unknown = null;
-let limiterAllows = true;
+let limiterResult: "ok" | "limited" | "unavailable" = "ok";
 let lastElapsedMs = 0;
 const sentLinks: { email: string; options: { emailRedirectTo: string } }[] = [];
 const checked: { project: string; address: string }[] = [];
@@ -34,7 +34,7 @@ mock.module("@/content/projects", {
   },
 });
 mock.module("@/lib/rate-limit", {
-  namedExports: { checkSignInRateLimit: async () => limiterAllows, getClientIp: () => "ip" },
+  namedExports: { checkSignInRateLimit: async () => limiterResult, getClientIp: () => "ip" },
 });
 mock.module("@/lib/supabase", {
   namedExports: {
@@ -86,7 +86,7 @@ beforeEach(() => {
   isMember = false;
   rpcError = null;
   sendError = null;
-  limiterAllows = true;
+  limiterResult = "ok";
   sentLinks.length = 0;
   checked.length = 0;
 });
@@ -148,9 +148,11 @@ test("a failed sign-in email gets the same answer as a sent one", async () => {
   mock.restoreAll();
 });
 
-test("sign-in is refused, with no check or email, when the rate limiter cannot vouch for it", async () => {
-  limiterAllows = false;
+test("sign-in is refused, with no check or email, when rate limited or the limiter is down", async () => {
+  limiterResult = "limited";
   assert.equal(await submit("client-proj", "client@example.com"), "/work/client-proj/client?error=rate_limited");
+  limiterResult = "unavailable";
+  assert.equal(await submit("client-proj", "client@example.com"), "/work/client-proj/client?error=unavailable");
   assert.equal(checked.length, 0);
   assert.equal(sentLinks.length, 0);
 });

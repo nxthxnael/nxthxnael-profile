@@ -19,8 +19,9 @@ export function getClientIp(headers: { get(name: string): string | null }) {
 
 if (!redis) {
   console.warn(
-    "UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN not set — rate " +
-      "limiting and webhook replay protection are disabled (failing open).",
+    "UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN not set — checkout and " +
+      "webhook rate limiting and replay protection are disabled (failing open), " +
+      "and client sign-in is refused (failing closed).",
   );
 }
 
@@ -48,16 +49,16 @@ const signInLimiter = redis
     })
   : null;
 
-/** Allows the request when Upstash is missing or errors, unless failOpen is false. */
-async function checkLimit(limiter: Ratelimit | null, ip: string, failOpen = true) {
-  if (!limiter) return failOpen;
+/** Fails open (allows the request) if Upstash isn't configured or errors. */
+async function checkLimit(limiter: Ratelimit | null, ip: string) {
+  if (!limiter) return true;
 
   try {
     const { success } = await limiter.limit(ip);
     return success;
   } catch (error) {
-    console.error(`Rate limiter unavailable, ${failOpen ? "allowing" : "refusing"} request`, error);
-    return failOpen;
+    console.error("Rate limiter unavailable, allowing request", error);
+    return true;
   }
 }
 
@@ -67,9 +68,22 @@ export const checkCheckoutRateLimit = (ip: string) =>
 export const checkWebhookRateLimit = (ip: string) =>
   checkLimit(webhookLimiter, ip);
 
-// Fails closed: without a working limiter, sign-in emails could be sent without a cap.
-export const checkSignInRateLimit = (ip: string) =>
-  checkLimit(signInLimiter, ip, false);
+/**
+ * Fails closed: "unavailable" when Upstash is missing or errors, so sign-in
+ * emails are never sent without a cap, and an outage isn't blamed on the client.
+ */
+export async function checkSignInRateLimit(
+  ip: string,
+): Promise<"ok" | "limited" | "unavailable"> {
+  if (!signInLimiter) return "unavailable";
+
+  try {
+    return (await signInLimiter.limit(ip)).success ? "ok" : "limited";
+  } catch (error) {
+    console.error("Rate limiter unavailable, refusing sign-in", error);
+    return "unavailable";
+  }
+}
 
 // Comfortably longer than Paystack's longest documented retry window
 // (72 hours for live-mode webhooks), so genuine retries are deduped too.

@@ -9,5 +9,5 @@ const { checkCheckoutRateLimit, checkSignInRateLimit } = await import("../src/li
 
 test("without Upstash, checkout fails open but sign-in fails closed", async () => {
   assert.equal(await checkCheckoutRateLimit("203.0.113.1"), true);
-  assert.equal(await checkSignInRateLimit("203.0.113.1"), false);
+  assert.equal(await checkSignInRateLimit("203.0.113.1"), "unavailable");
 });
