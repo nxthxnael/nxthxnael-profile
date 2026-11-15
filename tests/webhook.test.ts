@@ -11,6 +11,7 @@ process.env.PAYSTACK_SECRET_KEY = SECRET;
 process.env.DISCORD_WEBHOOK_URL = DISCORD_URL;
 process.env.UPSTASH_REDIS_REST_URL = UPSTASH_URL;
 process.env.UPSTASH_REDIS_REST_TOKEN = "unit";
+process.env.PAYSTACK_PLAN_CARE = "PLN_care_unit";
 
 register("./alias-hooks.mjs", import.meta.url);
 
@@ -19,6 +20,8 @@ register("./alias-hooks.mjs", import.meta.url);
 const seen = new Set<string>();
 let discordCalls = 0;
 let discordStatus = 200;
+const discordTitles: string[] = [];
+const subscriptionBodies: Record<string, string>[] = [];
 
 const realFetch = globalThis.fetch;
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -26,7 +29,13 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (url.startsWith(DISCORD_URL)) {
     discordCalls++;
+    discordTitles.push(JSON.parse(String(init?.body)).embeds[0].title);
     return new Response("{}", { status: discordStatus });
+  }
+
+  if (url === "https://api.paystack.co/subscription") {
+    subscriptionBodies.push(JSON.parse(String(init?.body)));
+    return Response.json({ status: true });
   }
 
   if (url.startsWith(UPSTASH_URL)) {
@@ -60,7 +69,7 @@ const { sendDiscordNotification } = await import("../src/lib/discord.ts");
 
 const REFERENCE = "ref_test_12345";
 
-function deliver() {
+function deliver(data: Record<string, unknown> = {}) {
   const body = JSON.stringify({
     event: "charge.success",
     data: {
@@ -69,6 +78,7 @@ function deliver() {
       currency: "KES",
       customer: { email: "buyer@example.com" },
       metadata: { kind: "package", packageName: "Website Audit & Fixes" },
+      ...data,
     },
   });
   const signature = createHmac("sha512", SECRET).update(body).digest("hex");
@@ -102,6 +112,54 @@ test("a failed Discord post answers 500, clears the dedupe key and lets the retr
   assert.equal(discordCalls, 2, "a delivered reference is still deduped");
 
   mock.restoreAll();
+});
+
+test("a build with Care subscribes the card once, two months out, even when the alert is retried", async () => {
+  mock.method(console, "error", () => {});
+  const reference = "ref_care_12345";
+  const build = {
+    reference,
+    customer: { email: "buyer@example.com", customer_code: "CUS_unit" },
+    authorization: { authorization_code: "AUTH_unit", reusable: true },
+    metadata: { kind: "package", packageName: "Starter Site", addCare: true },
+  };
+
+  discordStatus = 500;
+  assert.equal((await deliver(build)).status, 500);
+  assert.equal(subscriptionBodies.length, 0, "no subscription before the alert succeeds");
+
+  discordStatus = 200;
+  assert.equal((await deliver(build)).status, 200);
+  assert.equal(subscriptionBodies.length, 1);
+
+  const [subscription] = subscriptionBodies;
+  assert.equal(subscription.plan, "PLN_care_unit");
+  assert.equal(subscription.customer, "CUS_unit");
+  assert.equal(subscription.authorization, "AUTH_unit");
+  const days = (Date.parse(subscription.start_date) - Date.now()) / 86_400_000;
+  assert.ok(days > 55 && days < 63, `starts in ${days} days`);
+  assert.equal(discordTitles.at(-1), "Care plan");
+
+  await deliver(build);
+  assert.equal(subscriptionBodies.length, 1, "a replay does not subscribe again");
+
+  mock.restoreAll();
+});
+
+test("a build paid by M-Pesa is flagged for manual Care set-up", async () => {
+  const before = subscriptionBodies.length;
+  await deliver({
+    reference: "ref_mpesa_12345",
+    authorization: { authorization_code: "AUTH_mpesa", reusable: false },
+    metadata: { kind: "package", packageName: "Starter Site", addCare: true },
+  });
+  assert.equal(subscriptionBodies.length, before);
+  assert.equal(discordTitles.at(-1), "Care plan");
+});
+
+test("a plan renewal is labelled as a subscription, not a tip", async () => {
+  await deliver({ reference: "ref_renewal_12345", plan: { name: "Care" }, metadata: null });
+  assert.equal(discordTitles.at(-1), "Subscription renewed");
 });
 
 test("the Discord post is aborted after 3 seconds", async () => {

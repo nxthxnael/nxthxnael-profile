@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendDiscordNotification } from "@/lib/discord";
-import { isValidSignature } from "@/lib/paystack";
-import { formatPrice } from "@/content/services";
+import { createSubscription, isValidSignature } from "@/lib/paystack";
+import { formatPrice, freeCareMonths } from "@/content/services";
 import {
   checkWebhookRateLimit,
   forgetWebhookReference,
@@ -13,12 +13,42 @@ type ChargeSuccessData = {
   reference: string;
   amount: number;
   currency: string;
-  customer?: { email?: string };
+  customer?: { email?: string; customer_code?: string };
+  authorization?: { authorization_code?: string; reusable?: boolean };
+  plan?: { name?: string } | null;
   metadata?: {
     kind?: string;
     packageName?: string;
+    addCare?: boolean;
   } | null;
 };
+
+/** Subscribes the build's card to Care, first charge after the free months. */
+async function startFreeCare(data: ChargeSuccessData): Promise<string> {
+  const plan = process.env.PAYSTACK_PLAN_CARE;
+  const customer = data.customer?.customer_code ?? data.customer?.email;
+  const authorization = data.authorization?.authorization_code;
+
+  if (!plan) return "Set up manually: PAYSTACK_PLAN_CARE is not set";
+  // M-Pesa and bank payments can't be charged again later; only cards can.
+  if (!customer || !authorization || !data.authorization?.reusable) {
+    return "Set up manually: payment method can't be charged again";
+  }
+
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() + freeCareMonths);
+
+  try {
+    await createSubscription({ customer, plan, authorization, startDate });
+    return `Subscribed, first charge ${startDate.toDateString()}`;
+  } catch (error) {
+    console.error("Failed to start free Care subscription", {
+      reference: data.reference,
+      error,
+    });
+    return "Set up manually: Paystack rejected the subscription";
+  }
+}
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request.headers);
@@ -49,13 +79,20 @@ export async function POST(request: NextRequest) {
 
     const metadata = data.metadata ?? {};
     const isPackage = metadata.kind === "package";
+    // Subscription renewals carry the plan but not our checkout metadata.
+    const planName = data.plan?.name;
+    const packageName = metadata.packageName ?? planName;
 
     try {
       await sendDiscordNotification({
-        title: isPackage ? "New booking" : "New tip received",
+        title: isPackage
+          ? "New booking"
+          : planName
+            ? "Subscription renewed"
+            : "New tip received",
         fields: [
-          ...(isPackage && metadata.packageName
-            ? [{ name: "Package", value: metadata.packageName, inline: true }]
+          ...((isPackage || planName) && packageName
+            ? [{ name: "Package", value: packageName, inline: true }]
             : []),
           {
             name: "Amount",
@@ -78,6 +115,23 @@ export async function POST(request: NextRequest) {
       });
       await forgetWebhookReference(data.reference);
       return NextResponse.json({ error: "Notification failed" }, { status: 500 });
+    }
+
+    // Only after the alert succeeds: a retried delivery must not subscribe twice.
+    if (isPackage && metadata.addCare) {
+      const careStatus = await startFreeCare(data);
+      await sendDiscordNotification({
+        title: "Care plan",
+        fields: [
+          { name: "Status", value: careStatus },
+          { name: "Reference", value: data.reference },
+        ],
+      }).catch((error) => {
+        console.error("Care plan notification failed", {
+          reference: data.reference,
+          error,
+        });
+      });
     }
   }
 
