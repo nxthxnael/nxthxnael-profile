@@ -67,11 +67,12 @@ Both env vars are optional — without them, rate limiting and replay-dedup fail
 
 Project pages stay public. A project with `clientArea: true` in [`src/content/projects.ts`](src/content/projects.ts) also gets a **Client access** link to `/work/<slug>/client`. There, a client signs in with a one-time email link and sees that project's private links and files.
 
-- **Who sees what** lives in Supabase (`supabase/migrations/`): `project_members` lists the emails allowed on each project slug, and `project_resources` lists the links and files they see. Row level security enforces it in the database, so a client only ever reads their own projects.
+- **Who sees what** lives in Supabase (`supabase/migrations/`): `project_members` lists the emails allowed on each project slug, and `project_resources` lists the links and files they see. Row level security enforces it in the database, so a client only ever reads their own projects. Restrictive storage policies keep `client-files` that way even if a broader read policy is added later.
 - **Files** go in the private `client-files` storage bucket under `<slug>/...`. A client can download **only files listed** in `project_resources` (`kind = 'file'`, exact `storage_path`); anything else in the folder stays private. Download links expire after 5 minutes.
-- **Sign-in links** are only emailed to addresses on the project's member list, checked on the server with the secret key. Every answer looks the same and takes at least 2 seconds, so the form never reveals who is a client. Sign-in is rate limited and **fails closed**: without a working Upstash limiter it is refused.
+- **Sign-in links** are only emailed to addresses on the project's member list, checked on the server with the secret key. Every answer looks the same, sets the same cookies (strangers run the same sign-in against a local stub) and takes at least 2 seconds, so the form never reveals who is a client. Sign-in is rate limited per IP and per address (5 per 10 minutes each) and **fails closed**: without a working Upstash limiter it is refused.
 - **Redirects** use `SITE_URL` only, never the request's host.
-- **Sessions end 12 hours after sign-in**, timed from the session's own sign-in (`amr` in its JWT): the proxy signs that device out (`src/lib/session.ts`), and the database refuses reads from older sessions too (`client_session_is_fresh`).
+- **Sessions end 12 hours after sign-in**, timed from the session's own sign-in (`amr` in its JWT): the proxy signs that device out (`src/lib/session.ts`), and the database refuses reads from older sessions too (`client_session_is_fresh`). **Signing out ends database access at once**: the database also requires the token's session to still exist in `auth.sessions`, so a signed-out token is refused before it expires.
+- **Never cached offline**: the service worker serves client-area and `/auth` pages network-only, so private links never stay in the browser's offline cache.
 - **Passwords never go here.** Share credentials through a password manager.
 
 Setup:
