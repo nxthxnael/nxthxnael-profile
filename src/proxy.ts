@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isSessionExpired } from "@/lib/session";
 
 /** Refreshes the client-area session cookie before pages read it. */
 export async function proxy(request: NextRequest) {
@@ -25,7 +26,14 @@ export async function proxy(request: NextRequest) {
   });
 
   // Validating the user is what triggers a refresh of an expired access token.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Ends the session 12 hours after sign-in; signOut clears the cookies above.
+  if (user && isSessionExpired(user.last_sign_in_at)) {
+    await supabase.auth.signOut();
+  }
 
   return response;
 }
