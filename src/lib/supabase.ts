@@ -8,9 +8,15 @@ import { siteUrl } from "@/lib/site";
 const url = process.env.SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 
-// Sign-in also needs the secret key and a canonical site URL for its redirects.
+// Sign-in also needs the secret key, a canonical site URL for its redirects, and
+// Upstash, since its rate limit fails closed (without it every request is refused).
 export const isSupabaseConfigured = Boolean(
-  url && publishableKey && process.env.SUPABASE_SECRET_KEY && siteUrl(),
+  url &&
+    publishableKey &&
+    process.env.SUPABASE_SECRET_KEY &&
+    siteUrl() &&
+    process.env.UPSTASH_REDIS_REST_URL &&
+    process.env.UPSTASH_REDIS_REST_TOKEN,
 );
 
 /** A client acting as the signed-in visitor, so row level security applies. */
