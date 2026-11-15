@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProjectBySlug } from "@/content/projects";
+import { isSessionExpired } from "@/lib/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { requestLink, signOut } from "./actions";
 
@@ -77,7 +78,9 @@ async function ClientArea({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  // The proxy signs expired sessions out; this covers a request it didn't see.
+  const expired = Boolean(user && isSessionExpired(user.last_sign_in_at));
+  if (!user || expired) {
     return (
       <form action={requestLink.bind(null, slug)} className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">
@@ -88,6 +91,12 @@ async function ClientArea({
           <p role="status" className="rounded-lg border border-border bg-card p-3 text-sm">
             If this email has access, a sign-in link is on its way. It works
             once, for 15 minutes; open the most recent one in this browser.
+          </p>
+        ) : null}
+        {expired ? (
+          <p role="status" className="rounded-lg border border-border bg-card p-3 text-sm">
+            For your security, sessions end 12 hours after sign-in. Request a
+            new link to continue.
           </p>
         ) : null}
         {error && messages[error] ? (

@@ -70,6 +70,7 @@ Project pages stay public. A project with `clientArea: true` in [`src/content/pr
 - **Who sees what** lives in Supabase (`supabase/migrations/`): `project_members` lists the emails allowed on each project slug, and `project_resources` lists the links and files they see. Row level security enforces it in the database, so a client only ever reads their own projects.
 - **Files** go in the private `client-files` storage bucket under `<slug>/...`; the page hands out download links that expire after 5 minutes.
 - **Sign-in links** are only emailed to addresses on the project's member list, checked on the server with the secret key, and the form answers the same way either way.
+- **Sessions end 12 hours after sign-in** (`src/lib/session.ts`): the proxy signs the client out and they request a new link.
 - **Passwords never go here.** Share credentials through a password manager.
 
 Setup:
