@@ -36,7 +36,10 @@ async function startFreeCare(data: ChargeSuccessData): Promise<string> {
   }
 
   const startDate = new Date();
+  const day = startDate.getDate();
   startDate.setMonth(startDate.getMonth() + freeCareMonths);
+  // setMonth overflows short months (31 Dec + 2 = 3 Mar); clamp to the last day.
+  if (startDate.getDate() !== day) startDate.setDate(0);
 
   try {
     await createSubscription({ customer, plan, authorization, startDate });
