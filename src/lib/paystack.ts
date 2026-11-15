@@ -115,6 +115,8 @@ export type CreateSubscriptionParams = {
 export async function createSubscription(params: CreateSubscriptionParams) {
   const response = await fetch(`${PAYSTACK_API}/subscription`, {
     method: "POST",
+    // Runs inside the webhook, which must answer Paystack before it times out.
+    signal: AbortSignal.timeout(5000),
     headers: {
       Authorization: `Bearer ${getSecretKey()}`,
       "Content-Type": "application/json",
