@@ -127,7 +127,8 @@ async function ClientArea({
     .select("id, label, kind, url, storage_path")
     .eq("project_slug", slug)
     .order("sort")
-    .order("created_at");
+    .order("created_at")
+    .order("id");
   if (loadError) {
     console.error("Client resources failed to load", { slug, error: loadError });
     return (
