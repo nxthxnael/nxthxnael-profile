@@ -60,7 +60,7 @@ export default async function ProjectPage({
               </span>
             ))}
           </div>
-          {project.liveUrl || project.repoUrl ? (
+          {project.liveUrl || project.repoUrl || project.clientArea ? (
             <div className="flex flex-wrap gap-4 pt-1 text-sm">
               {project.liveUrl ? (
                 <a
@@ -81,6 +81,14 @@ export default async function ProjectPage({
                 >
                   Source on GitHub →
                 </a>
+              ) : null}
+              {project.clientArea ? (
+                <Link
+                  href={`/work/${project.slug}/client`}
+                  className="text-accent transition-opacity hover:opacity-80"
+                >
+                  Client access →
+                </Link>
               ) : null}
             </div>
           ) : null}
