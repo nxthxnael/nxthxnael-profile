@@ -25,6 +25,8 @@ export type InitializeTransactionParams = {
   callbackUrl: string;
   cancelUrl: string;
   reference?: string;
+  /** Paystack plan code; subscribes the customer and overrides the amount. */
+  plan?: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -48,6 +50,7 @@ export async function initializeTransaction(
       currency: params.currency,
       callback_url: params.callbackUrl,
       reference: params.reference,
+      plan: params.plan,
       metadata: {
         cancel_action: params.cancelUrl,
         ...params.metadata,
@@ -96,6 +99,37 @@ export async function verifyTransaction(
     amount: json.data.amount,
     currency: json.data.currency,
   };
+}
+
+export type CreateSubscriptionParams = {
+  /** Customer code or email. */
+  customer: string;
+  plan: string;
+  authorization: string;
+  startDate: Date;
+};
+
+/** Subscribes a customer using a card they already paid with, from a later date. */
+export async function createSubscription(params: CreateSubscriptionParams) {
+  const response = await fetch(`${PAYSTACK_API}/subscription`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getSecretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      customer: params.customer,
+      plan: params.plan,
+      authorization: params.authorization,
+      start_date: params.startDate.toISOString(),
+    }),
+  });
+
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok || !json.status) {
+    throw new Error(json.message ?? "Failed to create Paystack subscription");
+  }
 }
 
 /** Checks the x-paystack-signature header (HMAC-SHA512 of the raw body). */
