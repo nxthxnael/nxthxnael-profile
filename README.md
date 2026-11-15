@@ -40,9 +40,10 @@ The `/services` page sells fixed-scope packages (priced in KES) and accepts tips
 
 1. Copy `.env.example` to `.env.local`.
 2. Add a Paystack secret key (test or live) as `PAYSTACK_SECRET_KEY` — get one from the [Paystack dashboard](https://dashboard.paystack.com/#/settings/developers).
-3. Restart the dev server. Without a key, checkout still works end to end but lands on `/services/cancel` with a clear "payments aren't set up yet" message instead of erroring.
+3. For the monthly care plans, create a monthly Plan per tier in Paystack (Products → Plans) with the same price as `src/content/services.ts`, and add its code as `PAYSTACK_PLAN_CARE` / `PAYSTACK_PLAN_GROW`. Checkout passes the plan code, so Paystack creates the subscription and charges renewals itself.
+4. Restart the dev server. Without a key, checkout still works end to end but lands on `/services/cancel` with a clear "payments aren't set up yet" message instead of erroring.
 
-Packages, currency, and tip amounts are defined in [`src/content/services.ts`](src/content/services.ts) — pricing there is placeholder/generated and needs review before going live. `src/lib/paystack.ts` wraps Paystack's REST API directly (`/transaction/initialize` and `/transaction/verify`) — no SDK dependency needed. Customers enter their email at checkout, which Paystack requires; on completion they land on `/services/success`, which verifies the transaction status server-side before showing confirmation.
+Packages, currency, and tip amounts are defined in [`src/content/services.ts`](src/content/services.ts) — Web Development & SEO prices are founding-client rates; Design and Business pricing is still placeholder. `src/lib/paystack.ts` wraps Paystack's REST API directly (`/transaction/initialize` and `/transaction/verify`) — no SDK dependency needed. Customers enter their email at checkout, which Paystack requires; on completion they land on `/services/success`, which verifies the transaction status server-side before showing confirmation.
 
 ### Webhook + Discord notifications
 
@@ -64,4 +65,4 @@ Both env vars are optional — without them, rate limiting and replay-dedup fail
 
 ## Deploy
 
-Designed to deploy on [Vercel](https://vercel.com/new). Required: `PAYSTACK_SECRET_KEY`. Optional but recommended: `DISCORD_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
+Designed to deploy on [Vercel](https://vercel.com/new). Required: `PAYSTACK_SECRET_KEY`. Optional but recommended: `PAYSTACK_PLAN_CARE`, `PAYSTACK_PLAN_GROW`, `DISCORD_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
