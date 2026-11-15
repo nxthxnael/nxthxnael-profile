@@ -94,3 +94,34 @@ export async function verifyTransaction(
     currency: json.data.currency,
   };
 }
+
+export type CreateSubscriptionParams = {
+  /** Customer code or email. */
+  customer: string;
+  plan: string;
+  authorization: string;
+  startDate: Date;
+};
+
+/** Subscribes a customer using a card they already paid with, from a later date. */
+export async function createSubscription(params: CreateSubscriptionParams) {
+  const response = await fetch(`${PAYSTACK_API}/subscription`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getSecretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      customer: params.customer,
+      plan: params.plan,
+      authorization: params.authorization,
+      start_date: params.startDate.toISOString(),
+    }),
+  });
+
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok || !json.status) {
+    throw new Error(json.message ?? "Failed to create Paystack subscription");
+  }
+}

@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { servicePackages, formatPrice, type ServicePackage } from "@/content/services";
+import {
+  servicePackages,
+  formatPrice,
+  freeCareMonths,
+  getPackageById,
+  type ServicePackage,
+} from "@/content/services";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -42,7 +48,7 @@ export default function ServicesPage() {
               {plans.length > 0 ? (
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
                   Founding rates for my first 5 clients. Every build comes with
-                  the first 2 months of Care free.
+                  the first {freeCareMonths} months of Care free.
                 </p>
               ) : null}
 
@@ -138,6 +144,7 @@ function PackageCard({ pkg }: { pkg: ServicePackage }) {
             placeholder="you@example.com"
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
+          {pkg.offersCare ? <AddCareCheckbox /> : null}
           <button
             type="submit"
             className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
@@ -147,5 +154,21 @@ function PackageCard({ pkg }: { pkg: ServicePackage }) {
         </form>
       )}
     </div>
+  );
+}
+
+function AddCareCheckbox() {
+  const care = getPackageById("care-plan");
+  if (!care) return null;
+
+  return (
+    <label className="flex items-start gap-2 text-xs text-muted-foreground">
+      <input type="checkbox" name="addCare" className="mt-0.5" />
+      <span>
+        Add Care: first {freeCareMonths} months free, then{" "}
+        {formatPrice(care.priceInKobo, care.currency)}/mo on the same card.
+        Cancel any time.
+      </span>
+    </label>
   );
 }

@@ -91,6 +91,9 @@ export async function POST(request: NextRequest) {
     }
     amountInKobo = pkg.priceInKobo;
     metadata = { kind: "package", packageId: pkg.id, packageName: pkg.name };
+    if (pkg.offersCare && formData.get("addCare") === "on") {
+      metadata.addCare = true;
+    }
   } else if (kind === "tip") {
     const amount = Number(formData.get("amount"));
     if (!Number.isFinite(amount) || amount < 1 || amount > 1_000_000) {

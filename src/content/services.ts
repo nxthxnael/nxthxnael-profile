@@ -14,6 +14,8 @@ export type ServicePackage = {
   planEnvKey?: string;
   /** Scoped on a call instead of checked out; the price is a "from" price. */
   bookCall?: boolean;
+  /** Build checkout offers Care with the first months free (see webhook). */
+  offersCare?: boolean;
   popular?: boolean;
 };
 
@@ -27,6 +29,7 @@ export const servicePackages: ServicePackage[] = [
     description: "A one-page site that gets a solo or side business online fast.",
     priceInKobo: 1_500_000,
     currency,
+    offersCare: true,
     features: [
       "1-page site, mobile-first",
       "Contact / WhatsApp button",
@@ -41,6 +44,7 @@ export const servicePackages: ServicePackage[] = [
     description: "A multi-page site for a small business that wants to be found.",
     priceInKobo: 4_000_000,
     currency,
+    offersCare: true,
     popular: true,
     features: [
       "Up to 5 pages",
@@ -110,7 +114,7 @@ export const servicePackages: ServicePackage[] = [
     name: "Partner",
     category: "Web Development & SEO",
     description: "Everything in Grow, plus ongoing design and development time.",
-    priceInKobo: 1_200_000,
+    priceInKobo: 1_000_000,
     currency,
     billing: "monthly",
     bookCall: true,
@@ -150,6 +154,8 @@ export const servicePackages: ServicePackage[] = [
     features: ["90-minute session", "Written summary", "Follow-up notes"],
   },
 ];
+
+export const freeCareMonths = 2;
 
 export const tipPresetAmounts = [500, 1000, 2500, 5000];
 

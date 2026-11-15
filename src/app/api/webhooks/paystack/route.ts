@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { ipAddress } from "@vercel/functions";
 import { sendDiscordNotification } from "@/lib/discord";
-import { formatPrice } from "@/content/services";
+import { formatPrice, freeCareMonths } from "@/content/services";
+import { createSubscription } from "@/lib/paystack";
 import {
   checkWebhookRateLimit,
   isDuplicateWebhookReference,
@@ -25,13 +26,42 @@ type ChargeSuccessData = {
   reference: string;
   amount: number;
   currency: string;
-  customer?: { email?: string };
+  customer?: { email?: string; customer_code?: string };
+  authorization?: { authorization_code?: string; reusable?: boolean };
   plan?: { name?: string } | null;
   metadata?: {
     kind?: string;
     packageName?: string;
+    addCare?: boolean;
   } | null;
 };
+
+/** Subscribes the build's card to Care, first charge after the free months. */
+async function startFreeCare(data: ChargeSuccessData): Promise<string> {
+  const plan = process.env.PAYSTACK_PLAN_CARE;
+  const customer = data.customer?.customer_code ?? data.customer?.email;
+  const authorization = data.authorization?.authorization_code;
+
+  if (!plan) return "Set up manually: PAYSTACK_PLAN_CARE is not set";
+  // M-Pesa and bank payments can't be charged again later; only cards can.
+  if (!customer || !authorization || !data.authorization?.reusable) {
+    return "Set up manually: payment method can't be charged again";
+  }
+
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() + freeCareMonths);
+
+  try {
+    await createSubscription({ customer, plan, authorization, startDate });
+    return `Subscribed, first charge ${startDate.toDateString()}`;
+  } catch (error) {
+    console.error("Failed to start free Care subscription", {
+      reference: data.reference,
+      error,
+    });
+    return "Set up manually: Paystack rejected the subscription";
+  }
+}
 
 export async function POST(request: NextRequest) {
   const ip = ipAddress(request) ?? "unknown";
@@ -65,6 +95,8 @@ export async function POST(request: NextRequest) {
     // Subscription renewals carry the plan but not our checkout metadata.
     const planName = data.plan?.name;
     const packageName = metadata.packageName ?? planName;
+    const careStatus =
+      isPackage && metadata.addCare ? await startFreeCare(data) : null;
 
     await sendDiscordNotification({
       title: isPackage
@@ -76,6 +108,7 @@ export async function POST(request: NextRequest) {
         ...((isPackage || planName) && packageName
           ? [{ name: "Package", value: packageName, inline: true }]
           : []),
+        ...(careStatus ? [{ name: "Care plan", value: careStatus }] : []),
         {
           name: "Amount",
           value: formatPrice(data.amount, data.currency),
