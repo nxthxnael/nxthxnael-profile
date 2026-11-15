@@ -9,6 +9,8 @@ export type Project = {
   overview?: string[];
   repoUrl?: string;
   liveUrl?: string;
+  /** Shows a client sign-in on the project page; access is set in Supabase. */
+  clientArea?: boolean;
 };
 
 export const projects: Project[] = [

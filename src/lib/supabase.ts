@@ -7,7 +7,10 @@ import { cookies } from "next/headers";
 const url = process.env.SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 
-export const isSupabaseConfigured = Boolean(url && publishableKey);
+// The sign-in check also needs the secret key, so all three must be set.
+export const isSupabaseConfigured = Boolean(
+  url && publishableKey && process.env.SUPABASE_SECRET_KEY,
+);
 
 /** A client acting as the signed-in visitor, so row level security applies. */
 export async function createClient() {

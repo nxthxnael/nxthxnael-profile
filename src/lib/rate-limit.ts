@@ -40,6 +40,14 @@ const webhookLimiter = redis
     })
   : null;
 
+const signInLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "600 s"),
+      prefix: "ratelimit:sign-in",
+    })
+  : null;
+
 /** Fails open (allows the request) if Upstash isn't configured or errors. */
 async function checkLimit(limiter: Ratelimit | null, ip: string) {
   if (!limiter) return true;
@@ -58,6 +66,9 @@ export const checkCheckoutRateLimit = (ip: string) =>
 
 export const checkWebhookRateLimit = (ip: string) =>
   checkLimit(webhookLimiter, ip);
+
+export const checkSignInRateLimit = (ip: string) =>
+  checkLimit(signInLimiter, ip);
 
 // Comfortably longer than Paystack's longest documented retry window
 // (72 hours for live-mode webhooks), so genuine retries are deduped too.
