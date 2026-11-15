@@ -179,6 +179,7 @@ test("the Discord post is aborted after 3 seconds", async () => {
   const controller = new AbortController();
   const timeout = mock.method(AbortSignal, "timeout", () => controller.signal);
 
+  const savedFetch = globalThis.fetch;
   globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) =>
     new Promise((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
@@ -190,5 +191,6 @@ test("the Discord post is aborted after 3 seconds", async () => {
   await assert.rejects(pending, /timed out/);
   assert.deepEqual(timeout.mock.calls[0].arguments, [3000]);
 
+  globalThis.fetch = savedFetch;
   mock.restoreAll();
 });
