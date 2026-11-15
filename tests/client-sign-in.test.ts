@@ -79,6 +79,7 @@ test("a member gets a link back to their client page", async () => {
   assert.equal(landed, "/work/client-proj/client?sent=1");
   assert.deepEqual(checked, [{ project: "client-proj", address: "client@example.com" }]);
   assert.equal(sentLinks.length, 1);
+  assert.equal(sentLinks[0].email, "client@example.com");
   assert.equal(
     sentLinks[0].options.emailRedirectTo,
     "http://localhost:3000/auth/callback?next=%2Fwork%2Fclient-proj%2Fclient",

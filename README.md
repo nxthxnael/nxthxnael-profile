@@ -75,7 +75,7 @@ Project pages stay public. A project with `clientArea: true` in [`src/content/pr
 Setup:
 
 1. Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` (see `.env.example`) locally and in Vercel.
-2. In Supabase → Authentication → URL Configuration, set the Site URL to `https://nxthxnael.dev` and add `https://nxthxnael.dev/auth/callback` and `http://localhost:3000/auth/callback` as redirect URLs.
+2. In Supabase → Authentication → URL Configuration, set the Site URL to `https://nxthxnael.dev` and add `https://nxthxnael.dev/**` and `http://localhost:3000/**` as redirect URLs. The wildcard matters: sign-in links go to `/auth/callback?next=…`, and an exact URL without the query may not match.
 3. Add a custom SMTP sender (for example Resend) under Authentication → SMTP. Supabase's built-in email only reaches members of your Supabase organisation, so clients won't get links without it.
 4. For each client: add a row to `project_members` (lowercase email), add rows to `project_resources`, upload files under `client-files/<slug>/`, and set `clientArea: true` on the project.
 
