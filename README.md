@@ -63,6 +63,22 @@ Every request is verified against the `x-paystack-signature` header (HMAC-SHA512
 
 Both env vars are optional — without them, rate limiting and replay-dedup fail **open** (requests are allowed, a `console.warn` is logged) rather than breaking checkout before you've set this up.
 
+## Client area
+
+Project pages stay public. A project with `clientArea: true` in [`src/content/projects.ts`](src/content/projects.ts) also gets a **Client access** link to `/work/<slug>/client`. There, a client signs in with a one-time email link and sees that project's private links and files.
+
+- **Who sees what** lives in Supabase (`supabase/migrations/`): `project_members` lists the emails allowed on each project slug, and `project_resources` lists the links and files they see. Row level security enforces it in the database, so a client only ever reads their own projects.
+- **Files** go in the private `client-files` storage bucket under `<slug>/...`; the page hands out download links that expire after 5 minutes.
+- **Sign-in links** are only emailed to addresses on the project's member list, checked on the server with the secret key, and the form answers the same way either way.
+- **Passwords never go here.** Share credentials through a password manager.
+
+Setup:
+
+1. Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` (see `.env.example`) locally and in Vercel.
+2. In Supabase → Authentication → URL Configuration, set the Site URL to `https://nxthxnael.dev` and add `https://nxthxnael.dev/auth/callback` and `http://localhost:3000/auth/callback` as redirect URLs.
+3. Add a custom SMTP sender (for example Resend) under Authentication → SMTP. Supabase's built-in email only reaches members of your Supabase organisation, so clients won't get links without it.
+4. For each client: add a row to `project_members` (lowercase email), add rows to `project_resources`, upload files under `client-files/<slug>/`, and set `clientArea: true` on the project.
+
 ## Deploy
 
 Designed to deploy on [Vercel](https://vercel.com/new). Required: `PAYSTACK_SECRET_KEY`, plus `PAYSTACK_PLAN_CARE` and `PAYSTACK_PLAN_GROW` for the Care and Grow plans to be purchasable (without them those checkouts show a "not set up" message). Optional but recommended: `DISCORD_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
