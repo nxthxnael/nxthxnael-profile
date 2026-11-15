@@ -26,6 +26,7 @@ type ChargeSuccessData = {
   amount: number;
   currency: string;
   customer?: { email?: string };
+  plan?: { name?: string } | null;
   metadata?: {
     kind?: string;
     packageName?: string;
@@ -61,12 +62,19 @@ export async function POST(request: NextRequest) {
 
     const metadata = data.metadata ?? {};
     const isPackage = metadata.kind === "package";
+    // Subscription renewals carry the plan but not our checkout metadata.
+    const planName = data.plan?.name;
+    const packageName = metadata.packageName ?? planName;
 
     await sendDiscordNotification({
-      title: isPackage ? "New booking" : "New tip received",
+      title: isPackage
+        ? "New booking"
+        : planName
+          ? "Subscription renewed"
+          : "New tip received",
       fields: [
-        ...(isPackage && metadata.packageName
-          ? [{ name: "Package", value: metadata.packageName, inline: true }]
+        ...((isPackage || planName) && packageName
+          ? [{ name: "Package", value: packageName, inline: true }]
           : []),
         {
           name: "Amount",

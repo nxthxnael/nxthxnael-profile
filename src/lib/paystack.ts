@@ -19,6 +19,8 @@ export type InitializeTransactionParams = {
   callbackUrl: string;
   cancelUrl: string;
   reference?: string;
+  /** Paystack plan code; subscribes the customer and overrides the amount. */
+  plan?: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -42,6 +44,7 @@ export async function initializeTransaction(
       currency: params.currency,
       callback_url: params.callbackUrl,
       reference: params.reference,
+      plan: params.plan,
       metadata: {
         cancel_action: params.cancelUrl,
         ...params.metadata,
