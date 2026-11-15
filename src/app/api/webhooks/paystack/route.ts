@@ -51,7 +51,8 @@ async function startFreeCare(data: ChargeSuccessData): Promise<string> {
       reference: data.reference,
       error,
     });
-    return "Set up manually: Paystack rejected the subscription";
+    // A timeout can hide a subscription Paystack did create, so check before redoing it.
+    return "Check Paystack, then set up manually: the request failed or timed out and may have gone through";
   }
 }
 
@@ -99,6 +100,9 @@ export async function POST(request: NextRequest) {
           ...((isPackage || planName) && packageName
             ? [{ name: "Package", value: packageName, inline: true }]
             : []),
+          ...(isPackage && metadata.addCare
+            ? [{ name: "Care plan", value: "Requested, result follows", inline: true }]
+            : []),
           {
             name: "Amount",
             value: formatPrice(data.amount, data.currency),
@@ -125,6 +129,8 @@ export async function POST(request: NextRequest) {
     // Only after the alert succeeds: a retried delivery must not subscribe twice.
     if (isPackage && metadata.addCare) {
       const careStatus = await startFreeCare(data);
+      // Also in the logs, in case Discord is unset or the alert below fails.
+      console.info("Care plan", { reference: data.reference, careStatus });
       await sendDiscordNotification({
         title: "Care plan",
         fields: [

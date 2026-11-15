@@ -21,6 +21,7 @@ const seen = new Set<string>();
 let discordCalls = 0;
 let discordStatus = 200;
 const discordTitles: string[] = [];
+const discordFields: { name: string; value: string }[][] = [];
 const subscriptionBodies: Record<string, string>[] = [];
 
 const realFetch = globalThis.fetch;
@@ -29,7 +30,9 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (url.startsWith(DISCORD_URL)) {
     discordCalls++;
-    discordTitles.push(JSON.parse(String(init?.body)).embeds[0].title);
+    const [embed] = JSON.parse(String(init?.body)).embeds;
+    discordTitles.push(embed.title);
+    discordFields.push(embed.fields);
     return new Response("{}", { status: discordStatus });
   }
 
@@ -160,13 +163,16 @@ test("free months count from the payment date and end on the last day of Februar
 
 test("a build paid by M-Pesa is flagged for manual Care set-up", async () => {
   const before = subscriptionBodies.length;
+  const alertsBefore = discordTitles.length;
   await deliver({
     reference: "ref_mpesa_12345",
     authorization: { authorization_code: "AUTH_mpesa", reusable: false },
     metadata: { kind: "package", packageName: "Starter Site", addCare: true },
   });
   assert.equal(subscriptionBodies.length, before);
+  assert.equal(discordTitles.length, alertsBefore + 2, "booking alert plus a Care alert");
   assert.equal(discordTitles.at(-1), "Care plan");
+  assert.match(discordFields.at(-1)![0].value, /^Set up manually/);
 });
 
 test("a plan renewal is labelled as a subscription, not a tip", async () => {
