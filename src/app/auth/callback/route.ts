@@ -1,20 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import { siteUrl } from "@/lib/site";
 
 /** Where a sign-in link lands: swaps its one-time code for a session. */
 export async function GET(request: NextRequest) {
-  const { origin, searchParams } = request.nextUrl;
+  // Redirects use SITE_URL, never this request's Host, which a caller controls.
+  const site = siteUrl();
+  if (!site) return new NextResponse("Not found", { status: 404 });
+
+  const { searchParams } = request.nextUrl;
   const next = safeRedirectPath(searchParams.get("next"));
   const code = searchParams.get("code");
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return NextResponse.redirect(new URL(next, site));
   }
 
-  const failed = new URL(next, origin);
+  const failed = new URL(next, site);
   failed.searchParams.set("error", "link_expired");
   return NextResponse.redirect(failed);
 }

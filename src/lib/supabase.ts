@@ -1,15 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { siteUrl } from "@/lib/site";
 
 // Server-only: the site's CSP blocks browser calls to Supabase, so every call
 // goes through server components, server actions, route handlers or the proxy.
 const url = process.env.SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 
-// The sign-in check also needs the secret key, so all three must be set.
+// Sign-in also needs the secret key and a canonical site URL for its redirects.
 export const isSupabaseConfigured = Boolean(
-  url && publishableKey && process.env.SUPABASE_SECRET_KEY,
+  url && publishableKey && process.env.SUPABASE_SECRET_KEY && siteUrl(),
 );
 
 /** A client acting as the signed-in visitor, so row level security applies. */

@@ -3,6 +3,7 @@ import { register } from "node:module";
 import { beforeEach, mock, test } from "node:test";
 
 register("./alias-hooks.mjs", import.meta.url);
+process.env.SITE_URL = "http://localhost:3000";
 
 // Who is on the member list, and what requestLink tried to send.
 let isMember = false;
