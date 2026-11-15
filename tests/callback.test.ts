@@ -6,10 +6,16 @@ register("./alias-hooks.mjs", import.meta.url);
 process.env.SITE_URL = "https://nxthxnael.dev";
 
 let exchangeError: unknown = null;
+const exchanged: string[] = [];
 mock.module("@/lib/supabase", {
   namedExports: {
     createClient: async () => ({
-      auth: { exchangeCodeForSession: async () => ({ error: exchangeError }) },
+      auth: {
+        exchangeCodeForSession: async (code: string) => {
+          exchanged.push(code);
+          return { error: exchangeError };
+        },
+      },
     }),
   },
 });
@@ -22,10 +28,13 @@ function callback(query: string, host = "evil.example") {
 }
 
 test("redirects to the canonical site even when the Host header is forged", async () => {
+  exchangeError = null;
+  exchanged.length = 0;
   const ok = await callback("code=abc&next=%2Fwork%2Fqrix%2Fclient");
   assert.equal(ok.headers.get("location"), "https://nxthxnael.dev/work/qrix/client");
+  assert.deepEqual(exchanged, ["abc"]);
 
-  exchangeError = new Error("expired");
+  exchangeError = { status: 403, code: "otp_expired" };
   const failed = await callback("code=abc&next=%2Fwork%2Fqrix%2Fclient%3Fsent%3D1");
   assert.equal(
     failed.headers.get("location"),
@@ -43,4 +52,15 @@ test("a tab or newline in next cannot steer the redirect off-site", async () => 
     const response = await callback(`next=${next}`);
     assert.equal(new URL(response.headers.get("location")!).origin, "https://nxthxnael.dev", next);
   }
+});
+
+test("an auth outage during sign-in reads as unavailable, not as an expired link", async () => {
+  mock.method(console, "error", () => {});
+  exchangeError = { status: 0, name: "AuthRetryableFetchError" };
+  const response = await callback("code=abc&next=%2Fwork%2Fqrix%2Fclient");
+  assert.equal(
+    response.headers.get("location"),
+    "https://nxthxnael.dev/work/qrix/client?error=unavailable",
+  );
+  mock.restoreAll();
 });

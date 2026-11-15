@@ -15,3 +15,14 @@ export function isSessionExpired(amr: unknown, now = Date.now()) {
   // ">=" matches the database's client_session_is_fresh, which needs age < 12 hours.
   return now - Math.min(...timestamps) * 1000 >= SESSION_MAX_AGE_MS;
 }
+
+/**
+ * True when Supabase Auth itself failed (network, timeout, 5xx), as opposed to a
+ * 4xx answer about this visitor: no session, an invalid or expired token, or a
+ * used link. Outages should read "unavailable", not "signed out" or "expired".
+ */
+export function isAuthOutage(error: unknown) {
+  if (!error) return false;
+  const status = (error as { status?: unknown }).status;
+  return !(typeof status === "number" && status >= 400 && status < 500);
+}

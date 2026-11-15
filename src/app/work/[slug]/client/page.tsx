@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProjectBySlug } from "@/content/projects";
-import { isSessionExpired } from "@/lib/session";
+import { isAuthOutage, isSessionExpired } from "@/lib/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { requestLink, signOut } from "./actions";
 
@@ -78,7 +78,17 @@ async function ClientArea({
   // at once; the verified claims then give this session's own sign-in time.
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+  // No session is a normal 4xx answer; only a service failure is an outage.
+  if (isAuthOutage(userError)) {
+    console.error("Client sign-in check failed", { slug, error: userError });
+    return (
+      <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        {messages.unavailable}
+      </p>
+    );
+  }
   const claims = user ? (await supabase.auth.getClaims()).data?.claims : undefined;
 
   // The proxy signs expired sessions out; this covers a request it didn't see.
