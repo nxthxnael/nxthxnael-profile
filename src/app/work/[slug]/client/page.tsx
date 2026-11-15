@@ -86,8 +86,8 @@ async function ClientArea({
         </p>
         {sent ? (
           <p role="status" className="rounded-lg border border-border bg-card p-3 text-sm">
-            If this email has access, a sign-in link is on its way. Open it in
-            this browser.
+            If this email has access, a sign-in link is on its way. Open the
+            most recent one in this browser.
           </p>
         ) : null}
         {error && messages[error] ? (
@@ -114,11 +114,20 @@ async function ClientArea({
   }
 
   // Row level security returns only the resources this user may see.
-  const { data } = await supabase
+  const { data, error: loadError } = await supabase
     .from("project_resources")
     .select("id, label, kind, url, storage_path")
     .eq("project_slug", slug)
-    .order("sort");
+    .order("sort")
+    .order("created_at");
+  if (loadError) {
+    console.error("Client resources failed to load", { slug, error: loadError });
+    return (
+      <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        {messages.unavailable}
+      </p>
+    );
+  }
   const resources = await Promise.all(
     ((data ?? []) as Resource[]).map(async (resource) => {
       if (resource.kind === "link") return { ...resource, href: resource.url };
