@@ -13,6 +13,7 @@ type ChargeSuccessData = {
   reference: string;
   amount: number;
   currency: string;
+  paid_at?: string;
   customer?: { email?: string; customer_code?: string };
   authorization?: { authorization_code?: string; reusable?: boolean };
   plan?: { name?: string } | null;
@@ -35,7 +36,8 @@ async function startFreeCare(data: ChargeSuccessData): Promise<string> {
     return "Set up manually: payment method can't be charged again";
   }
 
-  const startDate = new Date();
+  // From the payment, not this delivery: Paystack can deliver or retry late.
+  const startDate = data.paid_at ? new Date(data.paid_at) : new Date();
   const day = startDate.getDate();
   startDate.setMonth(startDate.getMonth() + freeCareMonths);
   // setMonth overflows short months (31 Dec + 2 = 3 Mar); clamp to the last day.

@@ -146,17 +146,16 @@ test("a build with Care subscribes the card once, two months out, even when the 
   mock.restoreAll();
 });
 
-test("free months paid on 31 December end on the last day of February", async () => {
-  mock.timers.enable({ apis: ["Date"], now: new Date(2026, 11, 31, 12) });
+test("free months count from the payment date and end on the last day of February", async () => {
   await deliver({
     reference: "ref_new_year_12345",
+    paid_at: "2026-12-31T12:00:00.000Z",
     customer: { email: "buyer@example.com", customer_code: "CUS_unit" },
     authorization: { authorization_code: "AUTH_unit", reusable: true },
     metadata: { kind: "package", packageName: "Starter Site", addCare: true },
   });
   const start = new Date(subscriptionBodies.at(-1)!.start_date);
   assert.deepEqual([start.getFullYear(), start.getMonth(), start.getDate()], [2027, 1, 28]);
-  mock.timers.reset();
 });
 
 test("a build paid by M-Pesa is flagged for manual Care set-up", async () => {
