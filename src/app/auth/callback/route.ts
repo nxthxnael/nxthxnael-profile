@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { isAuthOutage } from "@/lib/session";
 import { siteUrl } from "@/lib/site";
@@ -8,7 +8,7 @@ import { siteUrl } from "@/lib/site";
 export async function GET(request: NextRequest) {
   // Redirects use SITE_URL, never this request's Host, which a caller controls.
   const site = siteUrl();
-  if (!site) return new NextResponse("Not found", { status: 404 });
+  if (!isSupabaseConfigured || !site) return new NextResponse("Not found", { status: 404 });
 
   const { searchParams } = request.nextUrl;
   // Belt and braces: even a path that slips past the check must resolve on-site.

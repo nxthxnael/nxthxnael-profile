@@ -9,6 +9,7 @@ process.env.SITE_URL = "http://localhost:3000";
 let isMember = false;
 let rpcError: unknown = null;
 let sendError: unknown = null;
+let signOutError: unknown = null;
 let limiterResult: "ok" | "limited" | "unavailable" = "ok";
 let lastElapsedMs = 0;
 const sentLinks: { email: string; options: { emailRedirectTo: string } }[] = [];
@@ -38,6 +39,7 @@ mock.module("@/lib/rate-limit", {
 });
 mock.module("@/lib/supabase", {
   namedExports: {
+    isSupabaseConfigured: true,
     createAdminClient: () => ({
       rpc: async (_name: string, args: { project: string; address: string }) => {
         checked.push(args);
@@ -50,13 +52,13 @@ mock.module("@/lib/supabase", {
           sentLinks.push(args);
           return { error: sendError };
         },
-        signOut: async () => ({}),
+        signOut: async () => ({ error: signOutError }),
       },
     }),
   },
 });
 
-const { requestLink } = await import("../src/app/work/[slug]/client/actions.ts");
+const { requestLink, signOut } = await import("../src/app/work/[slug]/client/actions.ts");
 
 // Runs requestLink on a mocked clock, so the minimum wait is measured, not slept.
 async function submit(slug: string, email: string) {
@@ -86,6 +88,7 @@ beforeEach(() => {
   isMember = false;
   rpcError = null;
   sendError = null;
+  signOutError = null;
   limiterResult = "ok";
   sentLinks.length = 0;
   checked.length = 0;
@@ -155,4 +158,15 @@ test("sign-in is refused, with no check or email, when rate limited or the limit
   assert.equal(await submit("client-proj", "client@example.com"), "/work/client-proj/client?error=unavailable");
   assert.equal(checked.length, 0);
   assert.equal(sentLinks.length, 0);
+});
+
+test("sign-out reports a failure instead of pretending the session ended", async () => {
+  const landed = async () =>
+    signOut("client-proj").catch((error: { url?: string }) => error.url);
+  assert.equal(await landed(), "/work/client-proj/client");
+
+  mock.method(console, "error", () => {});
+  signOutError = { status: 0, name: "AuthRetryableFetchError" };
+  assert.equal(await landed(), "/work/client-proj/client?error=sign_out_failed");
+  mock.restoreAll();
 });

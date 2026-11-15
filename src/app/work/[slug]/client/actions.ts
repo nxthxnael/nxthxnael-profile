@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getProjectBySlug } from "@/content/projects";
 import { checkSignInRateLimit, getClientIp } from "@/lib/rate-limit";
 import { siteUrl } from "@/lib/site";
-import { createAdminClient, createClient } from "@/lib/supabase";
+import { createAdminClient, createClient, isSupabaseConfigured } from "@/lib/supabase";
 
 // Every answer after the membership check takes at least this long, so a member
 // (whose link is emailed) and a stranger (no email) cannot be told apart by timing.
@@ -18,7 +18,7 @@ export async function requestLink(slug: string, formData: FormData) {
 
   if (!getProjectBySlug(slug)?.clientArea) redirect("/work");
   const site = siteUrl();
-  if (!site) redirect(`${page}?error=unavailable`);
+  if (!isSupabaseConfigured || !site) redirect(`${page}?error=unavailable`);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     redirect(`${page}?error=invalid_email`);
   }
@@ -56,6 +56,11 @@ export async function requestLink(slug: string, formData: FormData) {
 }
 
 export async function signOut(slug: string) {
-  await (await createClient()).auth.signOut({ scope: "local" });
+  // Supabase keeps the session cookies when sign-out itself fails, so say so.
+  const { error } = await (await createClient()).auth.signOut({ scope: "local" });
+  if (error) {
+    console.error("Client sign-out failed", { slug, error });
+    redirect(`/work/${slug}/client?error=sign_out_failed`);
+  }
   redirect(`/work/${slug}/client`);
 }

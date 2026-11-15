@@ -9,6 +9,7 @@ let exchangeError: unknown = null;
 const exchanged: string[] = [];
 mock.module("@/lib/supabase", {
   namedExports: {
+    isSupabaseConfigured: true,
     createClient: async () => ({
       auth: {
         exchangeCodeForSession: async (code: string) => {

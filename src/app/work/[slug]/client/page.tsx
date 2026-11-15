@@ -16,6 +16,7 @@ const messages: Record<string, string> = {
   rate_limited: "Too many attempts. Please wait a few minutes and try again.",
   unavailable: "Sign-in isn't available right now. Please try again later.",
   link_expired: "That sign-in link has expired or was already used. Request a new one.",
+  sign_out_failed: "Signing out didn't finish. Please try again in a moment.",
 };
 
 type Resource = {
@@ -165,6 +166,11 @@ async function ClientArea({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">Signed in as {user?.email}.</p>
+      {error === "sign_out_failed" ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {messages.sign_out_failed}
+        </p>
+      ) : null}
       {resources.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           There&apos;s nothing here for this account. If you think that&apos;s
