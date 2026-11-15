@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isSessionExpired } from "@/lib/session";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 /** Refreshes the client-area session cookie before pages read it. */
 export async function proxy(request: NextRequest) {
@@ -8,7 +9,8 @@ export async function proxy(request: NextRequest) {
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return response;
+  // Same rule as the page: no session work until the client area is fully set up.
+  if (!isSupabaseConfigured || !url || !key) return response;
 
   const supabase = createServerClient(url, key, {
     cookies: {
