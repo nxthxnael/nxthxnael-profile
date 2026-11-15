@@ -65,4 +65,4 @@ Both env vars are optional — without them, rate limiting and replay-dedup fail
 
 ## Deploy
 
-Designed to deploy on [Vercel](https://vercel.com/new). Required: `PAYSTACK_SECRET_KEY`. Optional but recommended: `PAYSTACK_PLAN_CARE`, `PAYSTACK_PLAN_GROW`, `DISCORD_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
+Designed to deploy on [Vercel](https://vercel.com/new). Required: `PAYSTACK_SECRET_KEY`, plus `PAYSTACK_PLAN_CARE` and `PAYSTACK_PLAN_GROW` for the Care and Grow plans to be purchasable (without them those checkouts show a "not set up" message). Optional but recommended: `DISCORD_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
