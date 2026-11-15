@@ -7,6 +7,10 @@ import { checkSignInRateLimit, getClientIp } from "@/lib/rate-limit";
 import { siteUrl } from "@/lib/site";
 import { createAdminClient, createClient } from "@/lib/supabase";
 
+// Every answer after the membership check takes at least this long, so a member
+// (whose link is emailed) and a stranger (no email) cannot be told apart by timing.
+const MIN_RESPONSE_MS = 2000;
+
 /** Emails a sign-in link, but only to addresses listed for this project. */
 export async function requestLink(slug: string, formData: FormData) {
   const page = `/work/${slug}/client`;
@@ -24,6 +28,7 @@ export async function requestLink(slug: string, formData: FormData) {
     redirect(`${page}?error=rate_limited`);
   }
 
+  const started = Date.now();
   const { data: isMember, error } = await createAdminClient().rpc(
     "can_access_project",
     { project: slug, address: email },
@@ -43,7 +48,10 @@ export async function requestLink(slug: string, formData: FormData) {
     if (sendError) console.error("Sign-in email failed", { slug, error: sendError });
   }
 
-  // The same answer either way, so the form never reveals who is a client.
+  // The same answer, after the same minimum wait, whether or not a link was sent.
+  await new Promise((resolve) =>
+    setTimeout(resolve, Math.max(0, MIN_RESPONSE_MS - (Date.now() - started))),
+  );
   redirect(`${page}?sent=1`);
 }
 

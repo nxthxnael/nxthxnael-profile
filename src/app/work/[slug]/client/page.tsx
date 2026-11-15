@@ -87,8 +87,9 @@ async function ClientArea({
         </p>
         {sent ? (
           <p role="status" className="rounded-lg border border-border bg-card p-3 text-sm">
-            If this email has access, a sign-in link is on its way. It works
-            once, for 15 minutes; open the most recent one in this browser.
+            If this email has access, a sign-in link has been sent. It works
+            once, for 15 minutes; open the most recent one in this browser. If
+            nothing arrives within a few minutes, request again or get in touch.
           </p>
         ) : null}
         {expired ? (

@@ -8,6 +8,9 @@ process.env.SITE_URL = "http://localhost:3000";
 // Who is on the member list, and what requestLink tried to send.
 let isMember = false;
 let rpcError: unknown = null;
+let sendError: unknown = null;
+let limiterAllows = true;
+let lastElapsedMs = 0;
 const sentLinks: { email: string; options: { emailRedirectTo: string } }[] = [];
 const checked: { project: string; address: string }[] = [];
 
@@ -31,7 +34,7 @@ mock.module("@/content/projects", {
   },
 });
 mock.module("@/lib/rate-limit", {
-  namedExports: { checkSignInRateLimit: async () => true, getClientIp: () => "ip" },
+  namedExports: { checkSignInRateLimit: async () => limiterAllows, getClientIp: () => "ip" },
 });
 mock.module("@/lib/supabase", {
   namedExports: {
@@ -45,7 +48,7 @@ mock.module("@/lib/supabase", {
       auth: {
         signInWithOtp: async (args: (typeof sentLinks)[number]) => {
           sentLinks.push(args);
-          return { error: null };
+          return { error: sendError };
         },
         signOut: async () => ({}),
       },
@@ -55,20 +58,35 @@ mock.module("@/lib/supabase", {
 
 const { requestLink } = await import("../src/app/work/[slug]/client/actions.ts");
 
+// Runs requestLink on a mocked clock, so the minimum wait is measured, not slept.
 async function submit(slug: string, email: string) {
   const form = new FormData();
   form.set("email", email);
-  try {
-    await requestLink(slug, form);
-  } catch (error) {
-    return (error as { url: string }).url;
+  mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+  let url: string | undefined;
+  let settled = false;
+  requestLink(slug, form)
+    .catch((error: { url?: string }) => {
+      url = error.url;
+    })
+    .finally(() => {
+      settled = true;
+    });
+  while (!settled) {
+    await new Promise((resolve) => setImmediate(resolve));
+    mock.timers.tick(100);
   }
-  throw new Error("requestLink did not redirect");
+  lastElapsedMs = Date.now();
+  mock.timers.reset();
+  if (!url) throw new Error("requestLink did not redirect");
+  return url;
 }
 
 beforeEach(() => {
   isMember = false;
   rpcError = null;
+  sendError = null;
+  limiterAllows = true;
   sentLinks.length = 0;
   checked.length = 0;
 });
@@ -107,4 +125,32 @@ test("bad emails and projects without a client area are refused before any check
   assert.equal(await submit("client-proj", "not-an-email"), "/work/client-proj/client?error=invalid_email");
   assert.equal(await submit("qrix", "client@example.com"), "/work");
   assert.equal(checked.length, 0);
+});
+
+test("members and strangers both wait at least two seconds, so timing does not reveal membership", async () => {
+  isMember = true;
+  await submit("client-proj", "client@example.com");
+  const memberMs = lastElapsedMs;
+
+  isMember = false;
+  await submit("client-proj", "stranger@example.com");
+  const strangerMs = lastElapsedMs;
+
+  assert.ok(memberMs >= 2000, `member answered after ${memberMs} ms`);
+  assert.ok(strangerMs >= 2000, `stranger answered after ${strangerMs} ms`);
+});
+
+test("a failed sign-in email gets the same answer as a sent one", async () => {
+  mock.method(console, "error", () => {});
+  isMember = true;
+  sendError = new Error("smtp down");
+  assert.equal(await submit("client-proj", "client@example.com"), "/work/client-proj/client?sent=1");
+  mock.restoreAll();
+});
+
+test("sign-in is refused, with no check or email, when the rate limiter cannot vouch for it", async () => {
+  limiterAllows = false;
+  assert.equal(await submit("client-proj", "client@example.com"), "/work/client-proj/client?error=rate_limited");
+  assert.equal(checked.length, 0);
+  assert.equal(sentLinks.length, 0);
 });

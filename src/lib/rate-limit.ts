@@ -48,16 +48,16 @@ const signInLimiter = redis
     })
   : null;
 
-/** Fails open (allows the request) if Upstash isn't configured or errors. */
-async function checkLimit(limiter: Ratelimit | null, ip: string) {
-  if (!limiter) return true;
+/** Allows the request when Upstash is missing or errors, unless failOpen is false. */
+async function checkLimit(limiter: Ratelimit | null, ip: string, failOpen = true) {
+  if (!limiter) return failOpen;
 
   try {
     const { success } = await limiter.limit(ip);
     return success;
   } catch (error) {
-    console.error("Rate limiter unavailable, allowing request", error);
-    return true;
+    console.error(`Rate limiter unavailable, ${failOpen ? "allowing" : "refusing"} request`, error);
+    return failOpen;
   }
 }
 
@@ -67,8 +67,9 @@ export const checkCheckoutRateLimit = (ip: string) =>
 export const checkWebhookRateLimit = (ip: string) =>
   checkLimit(webhookLimiter, ip);
 
+// Fails closed: without a working limiter, sign-in emails could be sent without a cap.
 export const checkSignInRateLimit = (ip: string) =>
-  checkLimit(signInLimiter, ip);
+  checkLimit(signInLimiter, ip, false);
 
 // Comfortably longer than Paystack's longest documented retry window
 // (72 hours for live-mode webhooks), so genuine retries are deduped too.
