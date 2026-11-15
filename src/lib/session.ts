@@ -1,6 +1,9 @@
 /** Clients are signed out this long after they used their sign-in link (also in SQL as 43200 s). */
 export const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
+/** Set by the proxy on a request whose session it just ended for being too old. */
+export const SESSION_EXPIRED_HEADER = "x-client-session-expired";
+
 /**
  * True once this session is older than the limit. The age comes from the
  * session's own JWT `amr` claim (earliest sign-in timestamp, in seconds), which

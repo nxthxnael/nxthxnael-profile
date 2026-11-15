@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProjectBySlug } from "@/content/projects";
-import { isAuthOutage, isSessionExpired } from "@/lib/session";
+import { isAuthOutage, isSessionExpired, SESSION_EXPIRED_HEADER } from "@/lib/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { requestLink, signOut } from "./actions";
 
@@ -92,8 +93,11 @@ async function ClientArea({
   }
   const claims = user ? (await supabase.auth.getClaims()).data?.claims : undefined;
 
-  // The proxy signs expired sessions out; this covers a request it didn't see.
-  const expired = Boolean(claims && isSessionExpired(claims.amr));
+  // The proxy signs expired sessions out and says so in a header; the claims
+  // check covers a request it didn't see.
+  const expired =
+    (await headers()).get(SESSION_EXPIRED_HEADER) === "1" ||
+    Boolean(claims && isSessionExpired(claims.amr));
   if (!claims || expired) {
     return (
       <form action={requestLink.bind(null, slug)} className="flex flex-col gap-3">

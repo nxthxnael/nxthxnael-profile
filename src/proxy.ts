@@ -1,10 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isAuthOutage, isSessionExpired } from "@/lib/session";
+import { isAuthOutage, isSessionExpired, SESSION_EXPIRED_HEADER } from "@/lib/session";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 /** Refreshes the client-area session cookie before pages read it. */
 export async function proxy(request: NextRequest) {
+  // Only this proxy may tell the page a session just expired.
+  request.headers.delete(SESSION_EXPIRED_HEADER);
   let response = NextResponse.next({ request });
 
   const url = process.env.SUPABASE_URL;
@@ -34,6 +36,11 @@ export async function proxy(request: NextRequest) {
   // Ends this device's session 12 hours after its sign-in; signOut clears the cookies above.
   if (data && isSessionExpired(data.claims.amr)) {
     await supabase.auth.signOut({ scope: "local" });
+    // The page then sees no session, so pass on why, keeping the cleared cookies.
+    request.headers.set(SESSION_EXPIRED_HEADER, "1");
+    const cleared = response.cookies.getAll();
+    response = NextResponse.next({ request });
+    for (const cookie of cleared) response.cookies.set(cookie);
   }
 
   return response;
