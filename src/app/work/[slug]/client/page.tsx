@@ -99,6 +99,21 @@ async function ClientArea({
   const expired =
     (await headers()).get(SESSION_EXPIRED_HEADER) === "1" ||
     Boolean(claims && isSessionExpired(claims.amr));
+  if (!claims && sent) {
+    return (
+      <div role="status" className="flex flex-col gap-3">
+        <h2 className="font-medium">Check your email</h2>
+        <p className="text-sm text-muted-foreground">
+          If this address has access, a sign-in link is on its way. It works
+          once, for 15 minutes; open it in this browser.
+        </p>
+        <Link href={`/work/${slug}/client`} className="text-sm text-accent hover:underline">
+          Use a different email
+        </Link>
+      </div>
+    );
+  }
+
   if (!claims || expired) {
     return (
       <form action={requestLink.bind(null, slug)} className="flex flex-col gap-3">
@@ -106,13 +121,6 @@ async function ClientArea({
           Enter the email you work with me from, and I&apos;ll send you a
           sign-in link.
         </p>
-        {sent ? (
-          <p role="status" className="rounded-lg border border-border bg-card p-3 text-sm">
-            If this email has access, a sign-in link has been sent. It works
-            once, for 15 minutes; open the most recent one in this browser. If
-            nothing arrives within a few minutes, request again or get in touch.
-          </p>
-        ) : null}
         {expired ? (
           <p role="status" className="rounded-lg border border-border bg-card p-3 text-sm">
             For your security, sessions end 12 hours after sign-in. Request a
