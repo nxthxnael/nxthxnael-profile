@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LockIcon } from "@/components/lock-icon";
 import { getProjectBySlug, projects } from "@/content/projects";
 
 export function generateStaticParams() {
@@ -85,8 +86,9 @@ export default async function ProjectPage({
               {project.clientArea ? (
                 <Link
                   href={`/work/${project.slug}/client`}
-                  className="text-accent transition-opacity hover:opacity-80"
+                  className="inline-flex items-center gap-1.5 text-accent transition-opacity hover:opacity-80"
                 >
+                  <LockIcon className="h-3.5 w-3.5" />
                   Client access →
                 </Link>
               ) : null}
