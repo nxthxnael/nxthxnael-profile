@@ -18,6 +18,7 @@ const messages: Record<string, string> = {
   unavailable: "Sign-in isn't available right now. Please try again later.",
   link_expired: "That sign-in link has expired or was already used. Request a new one.",
   sign_out_failed: "Signing out didn't finish. Please try again in a moment.",
+  file_unavailable: "That file couldn't be opened. Refresh and try again.",
 };
 
 type Resource = {
@@ -25,7 +26,6 @@ type Resource = {
   label: string;
   kind: "link" | "file";
   url: string | null;
-  storage_path: string | null;
 };
 
 export default async function ClientAreaPage({
@@ -144,7 +144,7 @@ async function ClientArea({
   // Row level security returns only the resources this user may see.
   const { data, error: loadError } = await supabase
     .from("project_resources")
-    .select("id, label, kind, url, storage_path")
+    .select("id, label, kind, url")
     .eq("project_slug", slug)
     .order("sort")
     .order("created_at")
@@ -157,22 +157,19 @@ async function ClientArea({
       </p>
     );
   }
-  const resources = await Promise.all(
-    ((data ?? []) as Resource[]).map(async (resource) => {
-      if (resource.kind === "link") return { ...resource, href: resource.url };
-      const { data: signed } = await supabase.storage
-        .from("client-files")
-        .createSignedUrl(resource.storage_path!, 300);
-      return { ...resource, href: signed?.signedUrl ?? null };
-    }),
-  );
+  // Files are signed when clicked (files/[id]/route.ts), so links never go stale.
+  const resources = ((data ?? []) as Resource[]).map((resource) => ({
+    ...resource,
+    href:
+      resource.kind === "link" ? resource.url : `/work/${slug}/client/files/${resource.id}`,
+  }));
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">Signed in as {user?.email}.</p>
-      {error === "sign_out_failed" ? (
+      {error && messages[error] ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {messages.sign_out_failed}
+          {messages[error]}
         </p>
       ) : null}
       {resources.length === 0 ? (
