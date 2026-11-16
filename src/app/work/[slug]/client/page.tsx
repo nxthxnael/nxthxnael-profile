@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LockIcon } from "@/components/lock-icon";
 import { getProjectBySlug } from "@/content/projects";
 import { isAuthOutage, isSessionExpired, SESSION_EXPIRED_HEADER } from "@/lib/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -291,12 +292,6 @@ function Icon({ className, children }: IconProps & { children: React.ReactNode }
   );
 }
 
-const LockIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="4" y="11" width="16" height="10" rx="2" />
-    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-  </Icon>
-);
 const MailIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="3" y="5" width="18" height="14" rx="2" />
