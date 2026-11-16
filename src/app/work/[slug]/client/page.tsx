@@ -29,7 +29,7 @@ type Resource = {
   id: string;
   label: string;
   kind: "link" | "file";
-  url: string | null;
+  url: string; // links always have one (a database check); files use the file route
 };
 
 export default async function ClientAreaPage({
@@ -227,29 +227,19 @@ async function ClientArea({
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background/60">
           {resources.map((resource) => (
             <li key={resource.id}>
-              {resource.href ? (
-                <a
-                  href={resource.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`group flex min-h-14 items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted focus-visible:bg-muted ${focusRing} focus-visible:ring-inset`}
-                >
-                  <ResourceIcon kind={resource.kind} />
-                  <span className="min-w-0 flex-1 truncate font-medium">{resource.label}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {resource.kind === "file" ? "Download" : "Open"}
-                  </span>
-                  <ChevronIcon className="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-safe:group-hover:translate-x-0.5" />
-                </a>
-              ) : (
-                <div className="flex min-h-14 items-center gap-3 px-4 py-3 text-sm">
-                  <ResourceIcon kind={resource.kind} />
-                  <span className="min-w-0 flex-1 truncate font-medium">{resource.label}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    Couldn&apos;t load, refresh
-                  </span>
-                </div>
-              )}
+              <a
+                href={resource.href}
+                target="_blank"
+                rel="noreferrer"
+                className={`group flex min-h-14 items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted focus-visible:bg-muted ${focusRing} focus-visible:ring-inset`}
+              >
+                <ResourceIcon kind={resource.kind} />
+                <span className="min-w-0 flex-1 truncate font-medium">{resource.label}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {resource.kind === "file" ? "Download" : "Open"}
+                </span>
+                <ChevronIcon className="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-safe:group-hover:translate-x-0.5" />
+              </a>
             </li>
           ))}
         </ul>
