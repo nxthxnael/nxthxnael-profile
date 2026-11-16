@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getProjectBySlug } from "@/content/projects";
-import { isAuthOutage } from "@/lib/session";
+import { isAuthOutage, SESSION_EXPIRED_HEADER } from "@/lib/session";
 import { siteUrl } from "@/lib/site";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -9,7 +9,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase";
  * page left open for a while never hands out an expired link.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string; id: string }> },
 ) {
   const { slug, id } = await params;
@@ -30,16 +30,25 @@ export async function GET(
     console.error("Client file sign-in check failed", { slug, error: userError });
     return back("unavailable");
   }
-  if (!user) return back();
+  // The proxy just ended a 12-hour-old session: say so, as the page would.
+  if (!user) {
+    return back(request.headers.get(SESSION_EXPIRED_HEADER) === "1" ? "session_expired" : undefined);
+  }
 
   // Row level security returns the row only to a member with a fresh session.
-  const { data: file } = await supabase
+  const { data: file, error: fileError } = await supabase
     .from("project_resources")
     .select("storage_path")
     .eq("id", id)
     .eq("project_slug", slug)
     .eq("kind", "file")
     .maybeSingle();
+  if (fileError) {
+    // An id that isn't a uuid is the visitor's typo, not an outage.
+    if (fileError.code === "22P02") return back("file_unavailable");
+    console.error("Client file lookup failed", { slug, id, error: fileError });
+    return back("unavailable");
+  }
   if (!file?.storage_path) return back("file_unavailable");
 
   const { data: signed } = await supabase.storage

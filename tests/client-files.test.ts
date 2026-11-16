@@ -9,6 +9,7 @@ process.env.SITE_URL = "https://nxthxnael.dev";
 let user: unknown = { id: "u1" };
 let userError: unknown = null;
 let row: unknown = { storage_path: "client-proj/handover.pdf" };
+let rowError: unknown = null;
 const queried: string[] = [];
 const signed: { path: string; expiresIn: number }[] = [];
 
@@ -30,7 +31,7 @@ mock.module("@/lib/supabase", {
             queried.push(`${table}.${column}=${value}`);
             return query;
           },
-          maybeSingle: async () => ({ data: row, error: null }),
+          maybeSingle: async () => ({ data: row, error: rowError }),
         };
         return query;
       },
@@ -49,8 +50,8 @@ mock.module("@/lib/supabase", {
 const { NextRequest } = await import("next/server");
 const { GET } = await import("../src/app/work/[slug]/client/files/[id]/route.ts");
 
-const open = (slug = "client-proj", id = "r1") =>
-  GET(new NextRequest(`https://nxthxnael.dev/work/${slug}/client/files/${id}`), {
+const open = (slug = "client-proj", id = "r1", headers: Record<string, string> = {}) =>
+  GET(new NextRequest(`https://nxthxnael.dev/work/${slug}/client/files/${id}`, { headers }), {
     params: Promise.resolve({ slug, id }),
   });
 
@@ -58,6 +59,7 @@ beforeEach(() => {
   user = { id: "u1" };
   userError = null;
   row = { storage_path: "client-proj/handover.pdf" };
+  rowError = null;
   queried.length = 0;
   signed.length = 0;
 });
@@ -109,4 +111,37 @@ test("an auth outage reads as unavailable", async () => {
 
 test("projects without a client area answer 404", async () => {
   assert.equal((await open("qrix")).status, 404);
+});
+
+test("a session the proxy just ended for age comes back with the 12-hour notice", async () => {
+  user = null;
+  userError = { status: 400, name: "AuthSessionMissingError" };
+  const response = await open("client-proj", "r1", { "x-client-session-expired": "1" });
+  assert.equal(
+    response.headers.get("location"),
+    "https://nxthxnael.dev/work/client-proj/client?error=session_expired",
+  );
+});
+
+test("a database failure reads as unavailable and is logged, not as a missing file", async () => {
+  const logged = mock.method(console, "error", () => {});
+  row = null;
+  rowError = { code: "08006", message: "connection failure" };
+  const response = await open();
+  assert.equal(
+    response.headers.get("location"),
+    "https://nxthxnael.dev/work/client-proj/client?error=unavailable",
+  );
+  assert.equal(logged.mock.callCount(), 1);
+  mock.restoreAll();
+});
+
+test("an id that isn't a uuid is just a missing file", async () => {
+  row = null;
+  rowError = { code: "22P02", message: "invalid input syntax for type uuid" };
+  const response = await open("client-proj", "not-a-uuid");
+  assert.equal(
+    response.headers.get("location"),
+    "https://nxthxnael.dev/work/client-proj/client?error=file_unavailable",
+  );
 });

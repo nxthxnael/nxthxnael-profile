@@ -106,6 +106,7 @@ async function ClientArea({
   // check covers a request it didn't see.
   const expired =
     (await headers()).get(SESSION_EXPIRED_HEADER) === "1" ||
+    error === "session_expired" ||
     Boolean(claims && isSessionExpired(claims.amr));
 
   if (!claims && sent) {
