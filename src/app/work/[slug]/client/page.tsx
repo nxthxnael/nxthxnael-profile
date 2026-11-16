@@ -6,6 +6,7 @@ import { getProjectBySlug } from "@/content/projects";
 import { isAuthOutage, isSessionExpired, SESSION_EXPIRED_HEADER } from "@/lib/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { requestLink, signOut } from "./actions";
+import { SubmitButton } from "./submit-button";
 
 export const metadata: Metadata = {
   title: "Client area",
@@ -131,12 +132,7 @@ async function ClientArea({
           placeholder="you@example.com"
           className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
-        >
-          Email me a sign-in link
-        </button>
+        <SubmitButton>Email me a sign-in link</SubmitButton>
       </form>
     );
   }
